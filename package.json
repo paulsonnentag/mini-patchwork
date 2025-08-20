@@ -10,6 +10,9 @@
   },
   "dependencies": {
     "@automerge/react": "workspace:*",
+    "@codemirror/state": "^6.5.2",
+    "@codemirror/view": "^6.38.1",
+    "codemirror": "^6.0.2",
     "react": "^18.3.0",
     "react-dom": "^18.3.0"
   },

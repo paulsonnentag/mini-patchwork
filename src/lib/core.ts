@@ -21,7 +21,11 @@ export const defineField = <T>(): FieldType<T> => {
   return constructor;
 };
 
-export class ObjRef<T = unknown> {
+export class ObjRef<V = unknown, D = unknown> {
+  get doc(): ObjRef<D> {
+    throw new Error("not implemented");
+  }
+
   add(field: Field) {
     // todo: add field to obj ref
   }
@@ -30,15 +34,27 @@ export class ObjRef<T = unknown> {
     throw new Error("not implemented");
   }
 
-  get value(): T {
+  get value(): V {
     throw new Error("not implemented");
   }
 }
 
 export class ValueRef<T> extends ObjRef<T> {
   constructor(
+    readonly context: Context,
     readonly docHandle: DocHandle<string>,
     readonly path: Automerge.Prop[]
+  ) {
+    super();
+  }
+}
+
+export class IdRef<T> extends ObjRef<T> {
+  constructor(
+    readonly context: Context,
+    readonly docHandle: DocHandle<string>,
+    readonly path: Automerge.Prop[],
+    readonly key: Automerge.Prop
   ) {
     super();
   }
@@ -83,8 +99,6 @@ export class TextSpanRef extends ObjRef<string> {
 export class Context {
   objectRefs = new Map<Automerge.ObjID, ObjRef>();
   fields = new Map<Automerge.ObjID, Map<Field, any>>();
-
-  change(mutate: (context: MutableContext) => void) {}
 
   // forEach: <>(type: T, mutate: () => void));
 }
@@ -131,3 +145,7 @@ export const useSelection = (): {
 } => {
   throw new Error("not implemented");
 };
+
+// diff
+
+// comments

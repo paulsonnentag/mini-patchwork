@@ -11,9 +11,9 @@ const IsSelected = defineField<boolean>("IsSelected");
 export const useSelection = () => {
   const context = useSharedContext();
   const selectedObjRefs = useDerivedSharedContext((context) =>
-    context.getAllObjRefs().filter((objRef) => {
-      context.getField(objRef, IsSelected) === true;
-    })
+    context
+      .getAllObjRefs()
+      .filter((objRef) => context.getField(objRef, IsSelected) === true)
   );
 
   useEffect(() => {
@@ -24,12 +24,11 @@ export const useSelection = () => {
   }, [selectedObjRefs]);
 
   const setSelection = useMemo(() => {
-    let retractPreviousSelection = () => {};
+    let retract = () => {};
 
     return (objRefs: ObjRef[]) => {
-      retractPreviousSelection();
-
-      context.change((context) => {
+      retract();
+      retract = context.change((context) => {
         for (const objRef of objRefs) {
           context.add(objRef).with(IsSelected(true));
         }

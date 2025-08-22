@@ -1,19 +1,26 @@
 import "maplibre-gl/dist/maplibre-gl.css";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import maplibregl from "maplibre-gl";
+import { useStaticCallback } from "../../../shared/useStaticCalback";
 
 export const MapLibreMap = ({
   markers,
-  onPointerEnterMarker,
-  onPointerLeaveMarker,
+  onHoverMarker,
 }: {
   markers: Marker[];
-  onPointerEnterMarker: (marker: Marker) => void;
-  onPointerLeaveMarker: (marker?: Marker) => void;
+  onHoverMarker: (marker: Marker | null) => void;
 }) => {
+  const [hoveredMarker, setHoveredMarker] = useState<Marker | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const markerRefs = useRef<maplibregl.Marker[]>([]);
+
+  const handleOnHoverMarker = useStaticCallback((marker: Marker | null) => {
+    if (hoveredMarker !== marker) {
+      setHoveredMarker(marker);
+      onHoverMarker(marker);
+    }
+  });
 
   // initialize map once
   useEffect(() => {
@@ -51,46 +58,35 @@ export const MapLibreMap = ({
     markerRefs.current.forEach((m) => m.remove());
     markerRefs.current = [];
 
-    // add new markers
+    // add new markers using the default MapLibre marker element
     markers.forEach((marker) => {
-      const el = document.createElement("div");
-      const size = 14;
-      el.style.width = `${size}px`;
-      el.style.height = `${size}px`;
-      el.style.borderRadius = "50%";
-      el.style.backgroundColor = marker.color || "#d33";
-      el.style.border = "2px solid #fff";
-      el.style.boxShadow = "0 0 0 1px rgba(0,0,0,0.2)";
-      el.style.cursor = "pointer";
-
-      el.addEventListener("pointerenter", () => onPointerEnterMarker(marker));
-      el.addEventListener("pointerleave", () => onPointerLeaveMarker(marker));
-
-      const m = new maplibregl.Marker({ element: el, anchor: "center" })
+      const m = new maplibregl.Marker({
+        color: marker.color,
+      })
         .setLngLat([marker.lng, marker.lat])
         .addTo(map);
+
+      const el = m.getElement();
+      el.style.cursor = "pointer";
+      el.addEventListener("pointerenter", (event) => {
+        event.stopPropagation();
+        event.preventDefault();
+        handleOnHoverMarker(marker);
+      });
+
       markerRefs.current.push(m);
     });
+  }, [markers, handleOnHoverMarker]);
 
-    // adjust view to fit markers
-    if (markers.length > 1) {
-      const bounds = new maplibregl.LngLatBounds();
-      markers.forEach((m) => bounds.extend([m.lng, m.lat]));
-      try {
-        map.fitBounds(bounds, { padding: 40, duration: 0 });
-      } catch {
-        // ignore if bounds are invalid
-      }
-    } else if (markers.length === 1) {
-      // map.easeTo({
-      //   center: [markers[0].lng, markers[0].lat],
-      //   zoom: 10,
-      //   duration: 300,
-      // });
-    }
-  }, [markers, onPointerEnterMarker, onPointerLeaveMarker]);
-
-  return <div ref={containerRef} style={{ width: "500px", height: "500px" }} />;
+  return (
+    <div
+      ref={containerRef}
+      style={{ width: "100%", height: "100%" }}
+      onPointerEnter={() => {
+        handleOnHoverMarker(null);
+      }}
+    />
+  );
 };
 
 export type Marker = {

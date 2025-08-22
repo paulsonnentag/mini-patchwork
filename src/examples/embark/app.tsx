@@ -43,7 +43,7 @@ export const App = ({ docUrl }: ToolProps) => {
 
   return (
     <SharedContext.Provider value={context}>
-      <div className="flex gap-2 w-full h-full">
+      <div className="flex gap-2 w-screen h-screen p-2">
         <MarkdownTool docUrl={docUrl} />
         <MapView />
       </div>

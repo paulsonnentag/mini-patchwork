@@ -98,12 +98,14 @@ export const MarkdownTool = ({ docUrl }: ToolProps) => {
   });
 
   return (
-    <Codemirror
-      docUrl={docUrl}
-      path={PATH}
-      onChangeSelection={onChangeSelection}
-      decorations={decorations}
-    />
+    <div className="w-full h-full border border-gray-300">
+      <Codemirror
+        docUrl={docUrl}
+        path={PATH}
+        onChangeSelection={onChangeSelection}
+        decorations={decorations}
+      />
+    </div>
   );
 };
 

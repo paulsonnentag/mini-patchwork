@@ -1,6 +1,6 @@
-import { Repo } from "@automerge/react";
+import type { Repo } from "@automerge/react";
 import { defineField, Field, FieldType } from "./fields";
-import { ObjRef } from "./objRefs";
+import type { ObjRef } from "./objRefs";
 
 type Transaction = {
   additionsByObject: Map<string, number>;
@@ -98,14 +98,7 @@ export class Context {
   }
 
   getAllObjRefs(): ObjRef[] {
-    const result: ObjRef[] = [];
-    for (const [key, count] of this.#objectRefs.entries()) {
-      if (count > 0) {
-        const ref = this.#keyToRef.get(key);
-        if (ref) result.push(ref);
-      }
-    }
-    return result;
+    return Array.from(this.#keyToRef.values());
   }
 
   onChange(fn: () => void): () => void {

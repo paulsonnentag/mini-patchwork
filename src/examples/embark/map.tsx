@@ -33,18 +33,27 @@ export const MapView = () => {
       objRefsWithLatLng.map((objRef) => ({
         lat: objRef.value.lat,
         lng: objRef.value.lng,
-        color: isSelected(objRef) ? "red" : "light-red",
+        color: isSelected(objRef) ? "#ff442d" : "#ff715f",
         data: { objRef },
       })),
     [objRefsWithLatLng, isSelected]
   );
 
+  for (const marker of markers) {
+    console.log("marker", marker);
+  }
+
   return (
     <div className="w-full h-full">
       <MapLibreMap
         markers={markers}
-        onPointerEnterMarker={(marker) => setSelection([marker.data.objRef])}
-        onPointerLeaveMarker={() => setSelection([])}
+        onHoverMarker={(marker) => {
+          if (marker) {
+            setSelection([marker.data.objRef]);
+          } else {
+            setSelection([]);
+          }
+        }}
       />
     </div>
   );

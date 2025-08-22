@@ -4,6 +4,7 @@ import { DecorationSet, EditorView } from "@codemirror/view";
 import { basicSetup } from "codemirror";
 import { useEffect, useState } from "react";
 import { lookup } from "../../../shared/lookup";
+import "./codemirror.css";
 
 type CodemirrorProps = {
   docUrl: string;
@@ -45,10 +46,5 @@ export const Codemirror = ({
     };
   }, [container, path, handle]);
 
-  return (
-    <div
-      ref={setContainer}
-      style={{ width: "100%", minHeight: "60vh", border: "1px solid #ddd" }}
-    />
-  );
+  return <div ref={setContainer} className="w-full h-full" />;
 };

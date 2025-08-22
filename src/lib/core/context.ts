@@ -4,29 +4,26 @@ import { ObjRef } from "./objRefs";
 
 type Transaction = {
   additionsByObject: Map<string, number>;
-  fieldAdditions: Map<string, Map<Function, Field[]>>;
+  fieldAdditions: Map<string, Map<FieldType<any>, any[]>>;
 };
 
 export class Context {
   #objectRefs = new Map<string, number>();
   #keyToRef = new Map<string, ObjRef>();
-  #fields = new Map<string, Map<Function, Field[]>>();
+  #fields = new Map<string, Map<FieldType<any>, any[]>>();
   #subscribers = new Set<() => void>();
 
-  // --- private helpers ---
   #notify() {
     this.#subscribers.forEach((subscriber) => subscriber());
-  }
-
-  #ensureRef(key: string, obj: ObjRef) {
-    if (!this.#keyToRef.has(key)) this.#keyToRef.set(key, obj);
   }
 
   #addObject(transaction: Transaction, obj: ObjRef): void {
     const key = obj.toKey();
     const current = this.#objectRefs.get(key) ?? 0;
     this.#objectRefs.set(key, current + 1);
-    this.#ensureRef(key, obj);
+    if (!this.#keyToRef.has(key)) {
+      this.#keyToRef.set(key, obj);
+    }
     transaction.additionsByObject.set(
       key,
       (transaction.additionsByObject.get(key) ?? 0) + 1
@@ -40,13 +37,13 @@ export class Context {
       byType = new Map();
       this.#fields.set(key, byType);
     }
-    const typeKey = field.type as Function;
+    const typeKey = field.type as FieldType<any>;
     let list = byType.get(typeKey);
     if (!list) {
       list = [];
       byType.set(typeKey, list);
     }
-    list.push(field);
+    list.push(field.value);
 
     let addedByType = transaction.fieldAdditions.get(key);
     if (!addedByType) {
@@ -58,7 +55,7 @@ export class Context {
       addedList = [];
       addedByType.set(typeKey, addedList);
     }
-    addedList.push(field);
+    addedList.push(field.value);
   }
 
   #retract(transaction: Transaction) {
@@ -69,8 +66,8 @@ export class Context {
       for (const [typeKey, addedList] of byType.entries()) {
         const existingList = existingByType.get(typeKey);
         if (!existingList) continue;
-        for (const field of addedList) {
-          const idx = existingList.lastIndexOf(field);
+        for (const value of addedList) {
+          const idx = existingList.lastIndexOf(value);
           if (idx !== -1) existingList.splice(idx, 1);
         }
         if (existingList.length === 0) existingByType.delete(typeKey);
@@ -97,8 +94,7 @@ export class Context {
     if (!byType) return undefined;
     const list = byType.get(fieldType);
     if (!list || list.length === 0) return undefined;
-    const last = list[list.length - 1] as Field<T>;
-    return last.value;
+    return list[0]; // just return the first one for now
   }
 
   getAllObjRefs(): ObjRef[] {
@@ -120,11 +116,26 @@ export class Context {
     };
   }
 
+  dump(): Array<[unknown, string, unknown]> {
+    const result: Array<[unknown, string, unknown]> = [];
+    for (const [key, byType] of this.#fields.entries()) {
+      const ref = this.#keyToRef.get(key);
+      const objValue = ref ? ref.value : undefined;
+      for (const [fieldType, list] of byType.entries()) {
+        const fieldName = fieldType.fieldName;
+        for (const value of list) {
+          result.push([objValue, fieldName, value]);
+        }
+      }
+    }
+    return result;
+  }
+
   // return function that retracts the changes
   change(fn: (context: MutableContext) => void): () => void {
     const transaction = {
       additionsByObject: new Map<string, number>(),
-      fieldAdditions: new Map<string, Map<Function, Field[]>>(),
+      fieldAdditions: new Map<string, Map<FieldType<any>, any[]>>(),
     };
 
     const mutableContext = new MutableContext(
@@ -133,7 +144,6 @@ export class Context {
     );
 
     fn(mutableContext);
-
     this.#notify();
 
     return () => {

@@ -6,7 +6,7 @@ import {
 } from "./core/sharedContext";
 import { ObjRef } from "./core/objRefs";
 
-const IsSelected = defineField<boolean>();
+const IsSelected = defineField<boolean>("IsSelected");
 
 export const useSelection = () => {
   const context = useSharedContext();

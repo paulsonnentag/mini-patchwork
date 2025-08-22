@@ -1,5 +1,5 @@
 import { Repo } from "@automerge/react";
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { Context } from "../../lib/core/context";
 import { SharedContext } from "../../lib/core/sharedContext";
 import { ToolProps } from "../../shared/patchwork";
@@ -32,6 +32,14 @@ export const init = (doc: MarkdownDoc, repo: Repo) => {
 
 export const App = ({ docUrl }: ToolProps) => {
   const context = useMemo(() => new Context(), []);
+
+  useEffect(
+    () =>
+      context.onChange(() => {
+        console.log("context", context.dump());
+      }),
+    [context]
+  );
 
   return (
     <SharedContext.Provider value={context}>

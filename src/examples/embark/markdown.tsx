@@ -22,7 +22,7 @@ export type MarkdownDoc = {
   content: string;
 };
 
-const Link = defineField<{ target: ObjRef }>();
+const Link = defineField<{ target: ObjRef }>("Link");
 
 const PATH = ["content"];
 
@@ -32,14 +32,6 @@ export const MarkdownTool = ({ docUrl }: ToolProps) => {
   const handle = useDocHandle<MarkdownDoc>(docUrl, { suspense: true });
   const context = useSharedContext();
   const { isSelected, setSelection } = useSelection();
-
-  useEffect(
-    () =>
-      context.onChange(() => {
-        console.log("context", context.getAllObjRefs());
-      }),
-    [context]
-  );
 
   // parse links
   const [linkedDocs, setLinkedDocs] = useState<LinkedDocs[]>([]);

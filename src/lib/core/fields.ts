@@ -6,14 +6,17 @@ export class Field<T = unknown> {
   }
 }
 
-export type FieldType<T> = {
+export type FieldType<T = unknown> = {
   (value: T): Field<T>;
+  fieldName: string;
 };
 
-export const defineField = <T>(): FieldType<T> => {
+export const defineField = <T>(fieldName: string): FieldType<T> => {
   const constructor: FieldType<T> = (value: T) => {
     return new Field(value, constructor);
   };
+
+  constructor.fieldName = fieldName;
 
   return constructor;
 };

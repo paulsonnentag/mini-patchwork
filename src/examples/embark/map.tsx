@@ -33,7 +33,9 @@ export const MapView = () => {
       objRefsWithLatLng.map((objRef) => ({
         lat: objRef.value.lat,
         lng: objRef.value.lng,
-        color: isSelected(objRef) ? "#ff442d" : "#ff715f",
+        color: isSelected(objRef)
+          ? "oklch(0.637 0.237 25.331)"
+          : "oklch(0.704 0.191 22.216)",
         data: { objRef },
       })),
     [objRefsWithLatLng, isSelected]

@@ -1,6 +1,6 @@
 import * as Automerge from "@automerge/automerge";
 import { useDocument } from "@automerge/react";
-import { ToolProps } from "../../lib/patchwork";
+import { ToolProps } from "../../shared/patchwork";
 import { useMemo } from "react";
 
 const DiffTool = ({ docUrl }: ToolProps) => {

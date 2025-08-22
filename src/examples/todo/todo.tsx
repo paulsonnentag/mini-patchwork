@@ -1,7 +1,7 @@
 import { AutomergeUrl, useDocument } from "@automerge/react";
-import { ToolProps } from "../../lib/patchwork";
+import { ToolProps } from "../../shared/patchwork";
 import { useState } from "react";
-import { ObjRef } from "../../lib/core";
+import { ObjRef } from "../../lib/core/objRefs";
 
 type Todo = {
   id: string;

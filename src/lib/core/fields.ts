@@ -6,7 +6,7 @@ export class Field<T = unknown> {
   }
 }
 
-type FieldType<T> = {
+export type FieldType<T> = {
   (value: T): Field<T>;
 };
 

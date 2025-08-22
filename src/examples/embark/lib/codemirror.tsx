@@ -59,6 +59,12 @@ export const Codemirror = ({
           path,
         }),
         decorationsField,
+        EditorView.updateListener.of((update) => {
+          if (update.selectionSet) {
+            const sel = update.state.selection.main;
+            onChangeSelection(sel.from, sel.to);
+          }
+        }),
       ],
       parent: container,
     });

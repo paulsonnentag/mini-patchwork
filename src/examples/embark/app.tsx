@@ -22,11 +22,19 @@ export const init = (doc: MarkdownDoc, repo: Repo) => {
     doc.lng = -0.1278;
   });
 
+  const aachenDocHandle = repo.create<LocationDoc>();
+  aachenDocHandle.change((doc) => {
+    doc.title = "Aachen";
+    doc.lat = 50.7753;
+    doc.lng = 6.0839;
+  });
+
   doc.content = outdent`
     # Some places
 
     - [Paris](#paris--${parisDocHandle.documentId})
     - [London](#london--${londonDocHandle.documentId})
+    - [Aachen](#aachen--${aachenDocHandle.documentId})
   `;
 };
 

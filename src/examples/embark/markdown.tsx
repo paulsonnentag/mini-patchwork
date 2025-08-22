@@ -75,7 +75,7 @@ export const MarkdownTool = ({ docUrl }: ToolProps) => {
             isSelected(linkedDoc.linkRef) || isSelected(linkedDoc.docRef);
 
           return Decoration.mark({
-            class: isLinkSelected ? "bg-yellow-200" : "bg-yellow-400",
+            class: isLinkSelected ? "bg-yellow-200" : "bg-yellow-100",
           }).range(linkedDoc.linkRef.from, linkedDoc.linkRef.to);
         }),
         true // sort ranges

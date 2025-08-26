@@ -20,7 +20,7 @@ export const MapView = () => {
   const objRefsWithLatLng = useDerivedSharedContext((context) => {
     return context
       .getAllObjRefs()
-      .filter((objRef): objRef is ObjRef<GeoPosition, unknown> => {
+      .filter((objRef): objRef is ObjRef<GeoPosition> => {
         const value = objRef.value as any;
         return (
           value && typeof value === "object" && "lat" in value && "lng" in value

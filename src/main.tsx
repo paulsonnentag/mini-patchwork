@@ -9,7 +9,7 @@ import {
 import { IndexedDBStorageAdapter } from "@automerge/automerge-repo-storage-indexeddb";
 import React, { Suspense } from "react";
 import ReactDOM from "react-dom/client";
-// import { App as EmbarkApp, init as initEmbark } from "./examples/embark/app.js";
+import { App as EmbarkApp, init as initEmbark } from "./examples/embark/app.js";
 import { App as TodoApp, init as initTodo } from "./examples/todo/app";
 import "./index.css";
 import { ToolProps } from "./shared/patchwork";
@@ -38,8 +38,8 @@ if (isValidAutomergeUrl(url)) {
 } else {
   handle = repo.create<any>({ count: 0 });
   handle.change((doc) => {
-    // initEmbark(doc, repo);
-    initTodo(doc, repo);
+    initEmbark(doc, repo);
+    //initTodo(doc, repo);
     //doc.counter = 0;
   });
   docUrl = handle.url;
@@ -73,7 +73,7 @@ const context = new Context();
 ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
   <RepoContext.Provider value={repo}>
     <SharedContext.Provider value={context}>
-      <TodoApp docUrl={docUrl} />
+      <EmbarkApp docUrl={docUrl} />
     </SharedContext.Provider>
   </RepoContext.Provider>
 );

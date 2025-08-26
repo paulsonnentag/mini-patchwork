@@ -1,12 +1,3 @@
-import {
-  DocHandle,
-  DocumentId,
-  mark,
-  Repo,
-  useDocHandle,
-  useDocument,
-  useRepo,
-} from "@automerge/react";
 import { RangeSet } from "@codemirror/state";
 import { Decoration, DecorationSet } from "@codemirror/view";
 import { useEffect, useMemo, useState } from "react";
@@ -17,6 +8,12 @@ import { ToolProps } from "../../shared/patchwork";
 import { useSelection } from "../../lib/selection";
 import { Codemirror } from "./lib/codemirror";
 import { useStaticCallback } from "../../shared/useStaticCalback";
+import {
+  useDocHandle,
+  useDocument,
+  useRepo,
+} from "@automerge/automerge-repo-react-hooks";
+import { DocHandle, DocumentId, Repo } from "@automerge/automerge-repo";
 
 export type MarkdownDoc = {
   content: string;

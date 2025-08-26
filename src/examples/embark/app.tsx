@@ -1,11 +1,8 @@
-import { Repo } from "@automerge/react";
-import { useEffect, useMemo } from "react";
-import { Context } from "../../lib/core/context";
-import { SharedContext } from "../../lib/core/sharedContext";
+import { Repo } from "@automerge/automerge-repo";
+import { outdent } from "../../shared/outdents";
 import { ToolProps } from "../../shared/patchwork";
 import { LocationDoc, MapView } from "./map";
 import { MarkdownDoc, MarkdownTool } from "./markdown";
-import { outdent } from "../../shared/outdents";
 
 export const init = (doc: MarkdownDoc, repo: Repo) => {
   const parisDocHandle = repo.create<LocationDoc>();

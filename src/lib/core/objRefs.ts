@@ -2,24 +2,14 @@ import * as Automerge from "@automerge/automerge";
 import { DocHandle } from "@automerge/automerge-repo";
 import { lookup } from "../../shared/lookup";
 
-export abstract class ObjRef<
-  Obj = unknown,
-  Doc extends Automerge.Doc<unknown> = Automerge.Doc<unknown>
-> {
+export abstract class ObjRef<Obj = unknown, Doc = unknown> {
   protected readonly docHandle: DocHandle<Doc>;
   readonly path: Automerge.Prop[];
-  readonly value: Obj;
+  abstract readonly value: Obj;
 
   constructor(docHandle: DocHandle<Doc>, path: Automerge.Prop[]) {
     this.docHandle = docHandle;
     this.path = path;
-
-    const value = this.resolve(docHandle.doc());
-    if (value === undefined) {
-      throw new Error("Failed to create ObjRef: can't resolve value");
-    }
-
-    this.value = value;
   }
 
   get doc(): ObjRef<Doc, Doc> {
@@ -62,15 +52,22 @@ export abstract class ObjRef<
   }
 }
 
-export class PathRef<
-  Obj = unknown,
-  Doc extends Automerge.Doc<unknown> = Automerge.Doc<unknown>
-> extends ObjRef<Obj, Doc> {
+export class PathRef<Obj = unknown, Doc = unknown> extends ObjRef<Obj, Doc> {
+  readonly value: Obj;
+
   constructor(docHandle: DocHandle<Doc>, path: Automerge.Prop[]) {
     super(docHandle, path);
+
+    const value = this.resolve(docHandle.doc());
+    if (value === undefined) {
+      throw new Error(
+        `Failed to create PathRef no value at path ${JSON.stringify(path)}`
+      );
+    }
+    this.value = value;
   }
 
-  protected resolve(doc: Doc): Obj | undefined {
+  protected resolve(doc: Automerge.Doc<Doc>): Obj | undefined {
     return lookup(doc, this.path);
   }
 
@@ -95,6 +92,7 @@ export class IdRef<
 > extends ObjRef<Obj, Doc> {
   private readonly id: Id;
   private readonly key: Automerge.Prop;
+  readonly value: Obj;
 
   constructor(
     docHandle: DocHandle<Doc>,
@@ -105,10 +103,23 @@ export class IdRef<
     super(docHandle, path);
     this.id = id;
     this.key = key;
+
+    const value = this.resolve(docHandle.doc());
+    if (value === undefined) {
+      throw new Error(
+        `Failed to create IdRef no object with id ${
+          this.id
+        } found at path ${JSON.stringify(path)}`
+      );
+    }
+    this.value = value;
   }
 
   protected resolve(doc: Doc): Obj | undefined {
     const objects = lookup(doc, this.path);
+    if (!objects) {
+      return undefined;
+    }
     return objects.find((obj: any) => obj[this.key] === this.id);
   }
 
@@ -134,6 +145,7 @@ export class TextSpanRef<
   private readonly toCursor: Automerge.Cursor;
   readonly from: number;
   readonly to: number;
+  readonly value: string;
 
   constructor(
     docHandle: DocHandle<Doc>,
@@ -148,6 +160,14 @@ export class TextSpanRef<
     this.toCursor = Automerge.getCursor(doc, path, to);
     this.from = from;
     this.to = to;
+
+    const value = this.resolve(doc);
+    if (value === undefined) {
+      throw new Error(
+        `Failed to create TextSpanRef no value at path ${JSON.stringify(path)}`
+      );
+    }
+    this.value = value;
   }
 
   protected resolve(doc: Doc): string | undefined {

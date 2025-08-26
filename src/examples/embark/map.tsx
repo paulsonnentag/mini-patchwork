@@ -21,7 +21,7 @@ export const MapView = () => {
     return context
       .getAllObjRefs()
       .filter((objRef): objRef is ObjRef<GeoPosition, unknown> => {
-        const value = objRef.value;
+        const value = objRef.value as any;
         return (
           value && typeof value === "object" && "lat" in value && "lng" in value
         );

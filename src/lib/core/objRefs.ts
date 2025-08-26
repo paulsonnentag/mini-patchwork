@@ -1,46 +1,139 @@
 import * as Automerge from "@automerge/automerge";
-import { DocHandle } from "@automerge/react";
+import { DocHandle } from "@automerge/automerge-repo";
 import { lookup } from "../../shared/lookup";
 
-export abstract class ObjRef<Obj = any, Doc = any> {
-  constructor(protected docHandle: DocHandle<Doc>) {}
+export abstract class ObjRef<
+  Obj = unknown,
+  Doc extends Automerge.Doc<unknown> = Automerge.Doc<unknown>
+> {
+  protected readonly docHandle: DocHandle<Doc>;
+  readonly path: Automerge.Prop[];
+  readonly value: Obj;
+
+  constructor(docHandle: DocHandle<Doc>, path: Automerge.Prop[]) {
+    this.docHandle = docHandle;
+    this.path = path;
+
+    const value = this.resolve(docHandle.doc());
+    if (value === undefined) {
+      throw new Error("Failed to create ObjRef: can't resolve value");
+    }
+
+    this.value = value;
+  }
 
   get doc(): ObjRef<Doc, Doc> {
     return new PathRef(this.docHandle, []);
   }
 
-  abstract get value(): Obj;
-
   abstract toKey(): string;
+
+  abstract change(fn: (obj: Obj) => void): void;
+
+  protected abstract resolve(doc: Doc): Obj | undefined;
+
+  valueAt(heads: Automerge.Heads) {
+    return this.resolve(Automerge.view(this.docHandle.doc(), heads));
+  }
 
   doesOverlap(other: ObjRef) {
     return this.toKey() === other.toKey();
   }
-}
 
-export class PathRef<Obj = any, Doc = any> extends ObjRef<Obj, Doc> {
-  #path: Automerge.Prop[];
+  isPartOf(other: ObjRef) {
+    if (
+      other.docHandle !== this.docHandle ||
+      other.path.length > this.path.length
+    ) {
+      return false;
+    }
 
-  constructor(docHandle: DocHandle<Doc>, path: Automerge.Prop[]) {
-    super(docHandle);
-    this.#path = path;
+    for (let i = 0; i < other.path.length; i++) {
+      if (this.path[i] !== other.path[i]) {
+        return false;
+      }
+    }
+
+    return true;
   }
 
-  get value(): Obj {
-    return lookup(this.docHandle.doc(), this.#path);
+  isEqual(other: ObjRef) {
+    return this.toKey() === other.toKey();
+  }
+}
+
+export class PathRef<
+  Obj = unknown,
+  Doc extends Automerge.Doc<unknown> = Automerge.Doc<unknown>
+> extends ObjRef<Obj, Doc> {
+  constructor(docHandle: DocHandle<Doc>, path: Automerge.Prop[]) {
+    super(docHandle, path);
+  }
+
+  protected resolve(doc: Doc): Obj | undefined {
+    return lookup(doc, this.path);
   }
 
   toKey(): string {
     const url = this.docHandle.url;
-    const path = JSON.stringify(this.#path);
+    const path = JSON.stringify(this.path);
     return `${url}|${path}`;
+  }
+
+  change(fn: (obj: Obj) => void): void {
+    this.docHandle.change((doc) => {
+      const obj = lookup(doc, this.path);
+      fn(obj);
+    });
   }
 }
 
-export class TextSpanRef<Doc = any> extends ObjRef<string, Doc> {
-  #path: Automerge.Prop[];
-  #fromCursor: Automerge.Cursor;
-  #toCursor: Automerge.Cursor;
+export class IdRef<
+  Obj = unknown,
+  Doc extends Automerge.Doc<unknown> = Automerge.Doc<unknown>,
+  Id = unknown
+> extends ObjRef<Obj, Doc> {
+  private readonly id: Id;
+  private readonly key: Automerge.Prop;
+
+  constructor(
+    docHandle: DocHandle<Doc>,
+    path: Automerge.Prop[],
+    id: any,
+    key: Automerge.Prop
+  ) {
+    super(docHandle, path);
+    this.id = id;
+    this.key = key;
+  }
+
+  protected resolve(doc: Doc): Obj | undefined {
+    const objects = lookup(doc, this.path);
+    return objects.find((obj: any) => obj[this.key] === this.id);
+  }
+
+  toKey(): string {
+    const url = this.docHandle.url;
+    const path = JSON.stringify(this.path);
+    const id = this.id;
+    return `${url}|${path}|${id}`;
+  }
+
+  change(fn: (obj: Obj) => void): void {
+    this.docHandle.change((doc) => {
+      const obj = lookup(doc, this.path);
+      fn(obj);
+    });
+  }
+}
+
+export class TextSpanRef<
+  Doc extends Automerge.Doc<unknown> = Automerge.Doc<unknown>
+> extends ObjRef<string, Doc> {
+  private readonly fromCursor: Automerge.Cursor;
+  private readonly toCursor: Automerge.Cursor;
+  readonly from: number;
+  readonly to: number;
 
   constructor(
     docHandle: DocHandle<Doc>,
@@ -48,33 +141,27 @@ export class TextSpanRef<Doc = any> extends ObjRef<string, Doc> {
     from: number,
     to: number
   ) {
-    super(docHandle);
-    this.#path = path;
+    super(docHandle, path);
+
     const doc = this.docHandle.doc();
-    this.#fromCursor = Automerge.getCursor(doc as any, path, from);
-    this.#toCursor = Automerge.getCursor(doc as any, path, to);
+    this.fromCursor = Automerge.getCursor(doc, path, from);
+    this.toCursor = Automerge.getCursor(doc, path, to);
+    this.from = from;
+    this.to = to;
   }
 
-  get from(): number {
-    const doc = this.docHandle.doc();
-    return Automerge.getCursorPosition(doc, this.#path, this.#fromCursor);
-  }
+  protected resolve(doc: Doc): string | undefined {
+    const from = Automerge.getCursorPosition(doc, this.path, this.fromCursor);
+    const to = Automerge.getCursorPosition(doc, this.path, this.toCursor);
 
-  get to(): number {
-    const doc = this.docHandle.doc();
-    return Automerge.getCursorPosition(doc, this.#path, this.#toCursor);
-  }
-
-  get value(): string {
-    const text = lookup(this.docHandle.doc(), this.#path);
-    return text.slice(this.from, this.to);
+    return lookup<string>(doc, this.path)!.slice(from, to);
   }
 
   toKey(): string {
     const url = this.docHandle.url;
-    const path = JSON.stringify(this.#path);
-    const fromCursor = this.#fromCursor;
-    const toCursor = this.#toCursor;
+    const path = JSON.stringify(this.path);
+    const fromCursor = this.fromCursor;
+    const toCursor = this.toCursor;
 
     return `${url}|${path}|${fromCursor}|${toCursor}`;
   }
@@ -83,12 +170,12 @@ export class TextSpanRef<Doc = any> extends ObjRef<string, Doc> {
     if (
       !(other instanceof TextSpanRef) ||
       this.docHandle !== other.docHandle ||
-      this.#path.length !== other.#path.length
+      this.path.length !== other.path.length
     ) {
       return false;
     }
-    for (let i = 0; i < this.#path.length; i++) {
-      if (this.#path[i] !== other.#path[i]) return false;
+    for (let i = 0; i < this.path.length; i++) {
+      if (this.path[i] !== other.path[i]) return false;
     }
 
     const aStart = Math.min(this.from, this.to);
@@ -97,5 +184,9 @@ export class TextSpanRef<Doc = any> extends ObjRef<string, Doc> {
     const bEnd = Math.max(other.from, other.to);
 
     return aEnd > bStart && bEnd > aStart;
+  }
+
+  change(fn: (obj: string) => void): void {
+    throw new Error("not implemented");
   }
 }

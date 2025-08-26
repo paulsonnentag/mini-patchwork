@@ -1,7 +1,12 @@
-import { AutomergeUrl, useDocument } from "@automerge/react";
-import { ToolProps } from "../../shared/patchwork";
 import { useState } from "react";
-import { ObjRef } from "../../lib/core/objRefs";
+import { ObjRef, PathRef } from "../../lib/core/objRefs";
+import { ToolProps } from "../../shared/patchwork";
+import { useGetAllDiffAnnotations, useGetDiff } from "../../lib/diff";
+import { classNames } from "../../shared/classNames";
+import {
+  useDocHandle,
+  useDocument,
+} from "@automerge/automerge-repo-react-hooks";
 
 type Todo = {
   id: string;
@@ -9,12 +14,19 @@ type Todo = {
   done: boolean;
 };
 
-type TodoDoc = {
+export type TodoDoc = {
   todos: Todo[];
 };
 
 export const TodoTool = ({ docUrl }: ToolProps) => {
-  const [doc, changeDoc] = useDocument<TodoDoc>(docUrl, { suspense: true });
+  console.log("docUrl", docUrl);
+
+  const [doc, changeDoc] = useDocument<TodoDoc>(docUrl, {
+    suspense: true,
+  });
+  const docHandle = useDocHandle<TodoDoc>(docUrl, {
+    suspense: true,
+  });
   const [text, setText] = useState("");
 
   const addTodo = () => {
@@ -30,60 +42,80 @@ export const TodoTool = ({ docUrl }: ToolProps) => {
     setText("");
   };
 
-  const toggleTodo = (id: string) => {
-    changeDoc((doc) => {
-      const todo = doc.todos.find((todo) => todo.id === id);
-      if (todo) {
-        todo.done = !todo.done;
-      }
-    });
-  };
-
-  const updateTodoDescription = (id: string, description: string) => {
-    changeDoc((doc) => {
-      const todo = doc.todos.find((todo) => todo.id === id);
-      if (todo) {
-        todo.description = description;
-      }
-    });
-  };
+  // todo: this sucks, doc handle might be out of sync with the doc state
+  if (docHandle.doc().todos.length !== doc.todos.length) {
+    return null;
+  }
 
   return (
-    <div>
-      <input
-        type="text"
-        value={text}
-        onChange={(e) => setText(e.target.value)}
-        placeholder="Add a new todo"
-      />
-      <button onClick={addTodo}>Add</button>
-      {doc.todos.map((todo) => (
-        const todoRef = getId(docHandle, ["todos", todo.id])
-      ))}
+    <div className="p-4 bg-gray-100 h-full">
+      <div className="max-w-[400px] mx-auto flex flex-col gap-2 bg-white rounded-md p-4">
+        <div className="flex gap-2">
+          <input
+            type="text"
+            className="border-2 border-gray-300 rounded-md p-2 flex-1"
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            placeholder="Add a new todo"
+          />
+          <button
+            className="bg-blue-500 text-white rounded-md p-2"
+            onClick={addTodo}
+          >
+            Add
+          </button>
+        </div>
+        {doc.todos.map((todo, index) => {
+          const todoRef = new PathRef<Todo, TodoDoc>(docHandle, [
+            "todos",
+            index,
+          ]);
+
+          return <TodoItem key={todo.id} todoRef={todoRef} />;
+        })}
+      </div>
     </div>
   );
 };
 
 type TodoItemProps = {
-  todo: ObjRef<Todo>
-}
-
-const TodoItem = ({ todo }: TodoItemProps) => {
-
-<div key={todo.id}>
-          <input
-            type="checkbox"
-            checked={todo.done}
-            onChange={() => toggleTodo(todo.id)}
-          />
-          <input
-            value={todo.description}
-            onChange={(e) => updateTodoDescription(todo.id, e.target.value)}
-          />
-        </div>
-
+  todoRef: ObjRef<Todo>;
 };
 
-const useDiff = (docUrl: AutomergeUrl) => {
-  throw new Error("Function not implemented.");
+const TodoItem = ({ todoRef }: TodoItemProps) => {
+  const todo = todoRef.value;
+  const getDiff = useGetDiff();
+
+  const onToogle = () => {
+    todoRef.change((todo) => {
+      todo.done = !todo.done;
+    });
+  };
+
+  const onChangeDescription = (e: React.ChangeEvent<HTMLInputElement>) => {
+    todoRef.change((todo) => {
+      todo.description = e.target.value;
+    });
+  };
+
+  if (!todo) return null;
+
+  const diff = getDiff(todoRef);
+
+  return (
+    <div
+      className={classNames("flex gap-2 items-center px-2 py-1", {
+        "line-through": todo.done,
+        "bg-green-200": diff?.type === "added",
+        "bg-yellow-200": diff?.type === "changed",
+      })}
+    >
+      <input type="checkbox" checked={todo.done} onChange={onToogle} />
+      <input
+        className="flex-1"
+        value={todo.description}
+        onChange={onChangeDescription}
+      />
+    </div>
+  );
 };

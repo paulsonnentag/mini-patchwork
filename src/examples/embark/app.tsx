@@ -39,22 +39,10 @@ export const init = (doc: MarkdownDoc, repo: Repo) => {
 };
 
 export const App = ({ docUrl }: ToolProps) => {
-  const context = useMemo(() => new Context(), []);
-
-  useEffect(
-    () =>
-      context.onChange(() => {
-        console.log("context", context.dump());
-      }),
-    [context]
-  );
-
   return (
-    <SharedContext.Provider value={context}>
-      <div className="flex gap-2 w-screen h-screen p-2">
-        <MarkdownTool docUrl={docUrl} />
-        <MapView />
-      </div>
-    </SharedContext.Provider>
+    <div className="flex gap-2 w-screen h-screen p-2">
+      <MarkdownTool docUrl={docUrl} />
+      <MapView />
+    </div>
   );
 };

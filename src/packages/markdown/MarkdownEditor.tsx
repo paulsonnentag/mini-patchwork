@@ -1,5 +1,5 @@
 import { RangeSet } from "@codemirror/state";
-import { Decoration, DecorationSet } from "@codemirror/view";
+import { Decoration, DecorationSet, WidgetType } from "@codemirror/view";
 import { useEffect, useMemo, useState } from "react";
 import { defineField } from "../../sdk/context/core/fields";
 import { ObjRef, PathRef, TextSpanRef } from "../../sdk/context/core/objRefs";
@@ -14,7 +14,7 @@ import {
 import { DocHandle, DocumentId, Repo } from "@automerge/automerge-repo";
 import { EditorProps } from "../../sdk/types";
 import { Codemirror } from "./lib/codemirror";
-import { useGetDiffsAt } from "../../sdk/context/diff";
+import { DiffValue, useGetDiffsAt } from "../../sdk/context/diff";
 
 export type MarkdownDoc = {
   content: string;
@@ -30,10 +30,9 @@ export const MarkdownEditor = ({ docUrl }: EditorProps) => {
   const handle = useDocHandle<MarkdownDoc>(docUrl, { suspense: true });
   const context = useSharedContext();
   const { isSelected, setSelection } = useSelection();
-
   const getDiffsAt = useGetDiffsAt();
 
-  console.log("getAllDiffs", getDiffsAt(new PathRef(handle, ["content"])));
+  const contentDiffs = getDiffsAt(new PathRef(handle, ["content"]));
 
   // parse links
   const [linkedDocs, setLinkedDocs] = useState<LinkedDocs[]>([]);
@@ -68,21 +67,47 @@ export const MarkdownEditor = ({ docUrl }: EditorProps) => {
     [linkedDocs]
   );
 
-  // compute decorations from links
+  // compute decorations
   const decorations = useMemo<DecorationSet>(
     () =>
       RangeSet.of<Decoration>(
-        linkedDocs.map((linkedDoc) => {
-          const isLinkSelected =
-            isSelected(linkedDoc.linkRef) || isSelected(linkedDoc.docRef);
+        [
+          // links
+          ...linkedDocs.map((linkedDoc) => {
+            const isLinkSelected =
+              isSelected(linkedDoc.linkRef) || isSelected(linkedDoc.docRef);
 
-          return Decoration.mark({
-            class: isLinkSelected ? "bg-yellow-200" : "bg-yellow-100",
-          }).range(linkedDoc.linkRef.from, linkedDoc.linkRef.to);
-        }),
+            return Decoration.mark({
+              class: isLinkSelected ? "bg-yellow-200" : "bg-yellow-100",
+            }).range(linkedDoc.linkRef.from, linkedDoc.linkRef.to);
+          }),
+
+          // diff
+          ...contentDiffs.flatMap((annotation) => {
+            const diff = annotation.field as DiffValue<string>;
+            const textSpan = annotation.objRef as TextSpanRef;
+
+            if (diff.type === "deleted") {
+              return makeDeleteDecoration({
+                deletedText: diff.before,
+                isActive: isSelected(textSpan),
+              }).range(textSpan.from, textSpan.from);
+            }
+
+            if (diff.type === "added") {
+              return Decoration.mark({
+                class: `border-b border-green-300 ${
+                  isSelected(textSpan) ? "bg-green-300" : "bg-green-100"
+                }`,
+              }).range(textSpan.from, textSpan.to);
+            }
+
+            return [];
+          }),
+        ],
         true // sort ranges
       ),
-    [linkedDocs, isSelected]
+    [linkedDocs, isSelected, contentDiffs]
   );
 
   const onChangeSelection = useStaticCallback((from: number, to: number) => {
@@ -142,3 +167,77 @@ const parseMarkdownLinks = async (
 
   return links;
 };
+
+class DeletionMarker extends WidgetType {
+  deletedText: string;
+  isActive: boolean;
+
+  constructor(deletedText: string, isActive: boolean) {
+    super();
+    this.deletedText = deletedText;
+    this.isActive = isActive;
+  }
+
+  toDOM(): HTMLElement {
+    const box = document.createElement("div");
+    box.style.display = "inline-block";
+    box.style.boxSizing = "border-box";
+    box.style.padding = "0 2px";
+    box.style.color = "rgb(236 35 35)";
+    box.style.margin = "0 4px";
+    box.style.fontSize = "0.8em";
+    box.style.backgroundColor = this.isActive
+      ? "rgb(255 0 0 / 20%)"
+      : "rgb(255 0 0 / 10%)";
+    box.style.borderRadius = "3px";
+    box.style.cursor = "default";
+    box.innerText = "⌫";
+
+    const hoverText = document.createElement("div");
+    hoverText.style.position = "absolute";
+    hoverText.style.zIndex = "1";
+    hoverText.style.padding = "10px";
+    hoverText.style.backgroundColor = "rgb(255 230 230)";
+    hoverText.style.fontSize = "15px";
+    hoverText.style.color = "black";
+    hoverText.style.padding = "5px";
+    hoverText.style.border = "rgb(100 55 55)";
+    hoverText.style.boxShadow = "0px 0px 6px rgba(0, 0, 0, 0.1)";
+    hoverText.style.borderRadius = "3px";
+    hoverText.style.visibility = "hidden";
+    hoverText.innerText = this.deletedText;
+
+    box.appendChild(hoverText);
+
+    box.onmouseover = function () {
+      hoverText.style.visibility = "visible";
+    };
+    box.onmouseout = function () {
+      hoverText.style.visibility = "hidden";
+    };
+
+    return box;
+  }
+
+  eq(other: DeletionMarker) {
+    return (
+      other.deletedText === this.deletedText && other.isActive === this.isActive
+    );
+  }
+
+  ignoreEvent() {
+    return true;
+  }
+}
+
+const makeDeleteDecoration = ({
+  deletedText,
+  isActive,
+}: {
+  deletedText: string;
+  isActive: boolean;
+}) =>
+  Decoration.widget({
+    widget: new DeletionMarker(deletedText, isActive),
+    side: 1,
+  });

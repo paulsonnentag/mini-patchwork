@@ -24,7 +24,10 @@ type DeletedDiff<T> = {
   before: T;
 };
 
-type DiffValue<T = unknown> = AddedDiff | ChangedDiff<T> | DeletedDiff<T>;
+export type DiffValue<T = unknown> =
+  | AddedDiff
+  | ChangedDiff<T>
+  | DeletedDiff<T>;
 
 const Diff = defineField<DiffValue>("diff");
 

@@ -1,12 +1,12 @@
-import { useState } from "react";
-import { ObjRef, PathRef } from "../../lib/core/objRefs";
-import { ToolProps } from "../../shared/patchwork";
-import { useGetAllDiffAnnotations, useGetDiff } from "../../lib/diff";
-import { classNames } from "../../shared/classNames";
 import {
   useDocHandle,
   useDocument,
 } from "@automerge/automerge-repo-react-hooks";
+import { useState } from "react";
+import { ObjRef, PathRef } from "../../sdk/context/core/objRefs";
+import { useGetDiff } from "../../sdk/context/diff";
+import { classNames } from "../../shared/classNames";
+import { EditorProps } from "../../sdk/types";
 
 type Todo = {
   id: string;
@@ -15,12 +15,11 @@ type Todo = {
 };
 
 export type TodoDoc = {
+  title: string;
   todos: Todo[];
 };
 
-export const TodoTool = ({ docUrl }: ToolProps) => {
-  console.log("docUrl", docUrl);
-
+export const TodoEditor = ({ docUrl }: EditorProps) => {
   const [doc, changeDoc] = useDocument<TodoDoc>(docUrl, {
     suspense: true,
   });
@@ -43,13 +42,20 @@ export const TodoTool = ({ docUrl }: ToolProps) => {
   };
 
   // todo: this sucks, doc handle might be out of sync with the doc state
-  if (docHandle.doc().todos.length !== doc.todos.length) {
+  if (
+    !docHandle.doc() ||
+    !docHandle.doc().todos ||
+    !doc ||
+    !doc.todos ||
+    docHandle.doc().todos.length !== doc.todos.length
+  ) {
     return null;
   }
 
   return (
-    <div className="p-4 bg-gray-100 h-full">
+    <div className="p-4  h-full">
       <div className="max-w-[400px] mx-auto flex flex-col gap-2 bg-white rounded-md p-4">
+        <div className="text-2xl font-bold">{doc.title}</div>
         <div className="flex gap-2">
           <input
             type="text"

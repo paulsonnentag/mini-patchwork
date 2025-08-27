@@ -1,5 +1,4 @@
-import type { Repo } from "@automerge/react";
-import { defineField, Field, FieldType } from "./fields";
+import { Field, FieldType } from "./fields";
 import type { ObjRef } from "./objRefs";
 
 type Transaction = {

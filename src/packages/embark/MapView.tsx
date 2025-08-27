@@ -1,8 +1,8 @@
 import { useMemo } from "react";
-import { useSelection } from "../../lib/selection";
+import { useSelection } from "../../sdk/context/selection";
 import { MapLibreMap, Marker } from "./lib/maplibre";
-import { useDerivedSharedContext } from "../../lib/core/sharedContext";
-import { ObjRef } from "../../lib/core/objRefs";
+import { useDerivedSharedContext } from "../../sdk/context/core/sharedContext";
+import { ObjRef } from "../../sdk/context/core/objRefs";
 
 type GeoPosition = {
   lat: number;

@@ -1,12 +1,10 @@
 import { RangeSet } from "@codemirror/state";
 import { Decoration, DecorationSet } from "@codemirror/view";
 import { useEffect, useMemo, useState } from "react";
-import { defineField } from "../../lib/core/fields";
-import { ObjRef, PathRef, TextSpanRef } from "../../lib/core/objRefs";
-import { useSharedContext } from "../../lib/core/sharedContext";
-import { ToolProps } from "../../shared/patchwork";
-import { useSelection } from "../../lib/selection";
-import { Codemirror } from "./lib/codemirror";
+import { defineField } from "../../sdk/context/core/fields";
+import { ObjRef, PathRef, TextSpanRef } from "../../sdk/context/core/objRefs";
+import { useSharedContext } from "../../sdk/context/core/sharedContext";
+import { useSelection } from "../../sdk/context/selection";
 import { useStaticCallback } from "../../shared/useStaticCalback";
 import {
   useDocHandle,
@@ -14,6 +12,8 @@ import {
   useRepo,
 } from "@automerge/automerge-repo-react-hooks";
 import { DocHandle, DocumentId, Repo } from "@automerge/automerge-repo";
+import { EditorProps } from "../../sdk/types";
+import { Codemirror } from "./lib/codemirror";
 
 export type MarkdownDoc = {
   content: string;
@@ -23,7 +23,7 @@ const Link = defineField<{ target: ObjRef }>("Link");
 
 const PATH = ["content"];
 
-export const MarkdownTool = ({ docUrl }: ToolProps) => {
+export const MarkdownEditor = ({ docUrl }: EditorProps) => {
   const repo = useRepo();
   const [doc] = useDocument(docUrl, { suspense: true });
   const handle = useDocHandle<MarkdownDoc>(docUrl, { suspense: true });

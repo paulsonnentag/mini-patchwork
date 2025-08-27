@@ -1,17 +1,17 @@
 import * as Automerge from "@automerge/automerge";
-import { ToolProps } from "../../shared/patchwork";
 import { startTransition, Suspense, useEffect, useState } from "react";
-import { useAddDiffOfDoc } from "../../lib/diff";
 import {
   useDocHandle,
   useDocument,
   useRepo,
 } from "@automerge/automerge-repo-react-hooks";
 import { AutomergeUrl } from "@automerge/automerge-repo";
+import { useAddDiffOfDoc } from "../../sdk/context/diff";
+import { EditorProps } from "../../sdk/types";
 
-type BranchedProps = ToolProps & {
+type BranchedProps = EditorProps & {
   docUrl: string;
-  tool: React.FC<ToolProps>;
+  tool: React.FC<EditorProps>;
 };
 
 type Branch = {
@@ -96,14 +96,12 @@ export const Branched = ({ docUrl, tool: Tool }: BranchedProps) => {
     });
   };
 
-  console.log("branchesDoc", branchesDoc, doc.branchesDocUrl);
-
   if (!branchesDoc) {
     return <div>Loading...</div>;
   }
 
   return (
-    <div className="flex flex-col h-screen">
+    <div className="flex flex-col h-full">
       <div className="flex flex-row gap-2 p-2 border-b border-gray-200">
         <select
           value={checkedOutDocUrl}

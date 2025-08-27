@@ -1,12 +1,12 @@
 import { automergeSyncPlugin } from "@automerge/automerge-codemirror";
-import { Decoration, DecorationSet, EditorView } from "@codemirror/view";
+import { AutomergeUrl } from "@automerge/automerge-repo";
+import { useDocHandle } from "@automerge/automerge-repo-react-hooks";
 import { StateEffect, StateField } from "@codemirror/state";
+import { Decoration, DecorationSet, EditorView } from "@codemirror/view";
 import { basicSetup } from "codemirror";
 import { useEffect, useRef, useState } from "react";
-import { lookup } from "../../../shared/lookup";
 import "./codemirror.css";
-import { useDocHandle } from "@automerge/automerge-repo-react-hooks";
-import { AutomergeUrl } from "@automerge/automerge-repo";
+import { lookup } from "../../../shared/lookup";
 
 type CodemirrorProps = {
   docUrl: AutomergeUrl;
@@ -23,7 +23,7 @@ export const Codemirror = ({
 }: CodemirrorProps) => {
   const [container, setContainer] = useState<HTMLDivElement | null>(null);
 
-  const handle = useDocHandle<any>(docUrl, { suspense: true });
+  const handle = useDocHandle(docUrl, { suspense: true });
 
   // Effect and field to manage external decorations without remounting editor
   const setDecorations = useRef(StateEffect.define<DecorationSet>()).current;

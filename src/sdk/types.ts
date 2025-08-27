@@ -22,3 +22,9 @@ export type Tool = {
   supportsDatatypes: string[];
   editor: React.FC<EditorProps>;
 };
+
+export type PatchworkDoc = {
+  ["@pathwork"]: {
+    type: string;
+  };
+};

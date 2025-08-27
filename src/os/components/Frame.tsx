@@ -5,19 +5,13 @@ import {
 } from "@automerge/automerge-repo";
 import { useDocument, useRepo } from "@automerge/automerge-repo-react-hooks";
 import { useEffect, useState } from "react";
-import { DataTypeTemplate } from "../../sdk/types";
+import { DataTypeTemplate, PatchworkDoc } from "../../sdk/types";
 import { DATA_TYPE_TEMPLATES, getDataType } from "../datatypes";
-import { getEditor } from "../tools";
+import { getCompatibleTools, getEditor, useSelectedTool } from "../tools";
 import { Branched } from "./Branched";
 
 type AccountDoc = {
   documents: AutomergeUrl[];
-};
-
-type PatchworkDoc = {
-  ["@pathwork"]: {
-    type: string;
-  };
 };
 
 export const Frame = () => {
@@ -25,8 +19,11 @@ export const Frame = () => {
   const [selectedDocUrl, setSelectedDocUrl] = useDocUrl();
   const [doc, changeDoc] = useDocument<PatchworkDoc>(selectedDocUrl);
   const [accountDoc, changeAccountDoc] = useAccountDoc();
+  const [selectedTool, setSelectedToolId] = useSelectedTool(selectedDocUrl);
+  const selectedDataType = doc ? doc["@pathwork"]?.type : undefined;
+  const tools = selectedDataType ? getCompatibleTools(selectedDataType) : [];
 
-  const Editor = doc ? getEditor(doc?.["@pathwork"]?.type) : undefined;
+  console.log("tools", tools);
 
   const addNewDocument = (template: DataTypeTemplate) => {
     const docHandle = repo.create<PatchworkDoc>();
@@ -47,8 +44,6 @@ export const Frame = () => {
   if (!accountDoc) {
     return <div>Loading...</div>;
   }
-
-  console.log(Editor);
 
   return (
     <div className="h-screen w-screen flex">
@@ -78,8 +73,27 @@ export const Frame = () => {
       </div>
 
       <div className="flex-1">
-        {Editor && selectedDocUrl && (
-          <Branched docUrl={selectedDocUrl} tool={Editor} />
+        <div className="flex h-[57px] items-center border-b border-gray-300 p-2">
+          <div className="w-full" />
+          <div className="flex gap-2">
+            {doc &&
+              tools.map((tool) => (
+                <button
+                  className={`border ${
+                    selectedTool === tool
+                      ? "border-blue-500"
+                      : "border-gray-300"
+                  } rounded-md p-2`}
+                  onClick={() => setSelectedToolId(tool.id)}
+                >
+                  {tool.name}
+                </button>
+              ))}
+          </div>
+        </div>
+
+        {selectedTool && selectedDocUrl && (
+          <Branched docUrl={selectedDocUrl} tool={selectedTool.editor} />
         )}
       </div>
     </div>

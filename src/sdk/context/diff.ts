@@ -1,7 +1,7 @@
 import * as Automerge from "@automerge/automerge";
 import { DocHandle } from "@automerge/automerge-repo";
 import { useCallback, useEffect } from "react";
-import { lookup } from "../../shared/lookup";
+import { lookup } from "../../lib/lookup";
 import { defineField } from "./core/fields";
 import { ObjRef, PathRef } from "./core/objRefs";
 import {

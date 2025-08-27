@@ -5,7 +5,7 @@ import {
 import { useState } from "react";
 import { ObjRef, PathRef } from "../../sdk/context/core/objRefs";
 import { useGetDiff } from "../../sdk/context/diff";
-import { classNames } from "../../shared/classNames";
+import { classNames } from "../../lib/classNames";
 import { EditorProps } from "../../sdk/types";
 
 type Todo = {

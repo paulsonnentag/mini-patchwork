@@ -5,7 +5,7 @@ import { defineField } from "../../sdk/context/core/fields";
 import { ObjRef, PathRef, TextSpanRef } from "../../sdk/context/core/objRefs";
 import { useSharedContext } from "../../sdk/context/core/sharedContext";
 import { useSelection } from "../../sdk/context/selection";
-import { useStaticCallback } from "../../shared/useStaticCalback";
+import { useStaticCallback } from "../../lib/useStaticCalback";
 import {
   useDocHandle,
   useDocument,

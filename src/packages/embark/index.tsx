@@ -1,6 +1,6 @@
 import { Repo } from "@automerge/automerge-repo";
 import { DataTypeTemplate, Tool } from "../../sdk/types";
-import { outdent } from "../../shared/outdents";
+import { outdent } from "../../lib/outdents";
 import { MarkdownDoc } from "../markdown/MarkdownEditor";
 import { EmbarkEditor } from "./EmbarkEditor";
 import { LocationDoc } from "./MapView";

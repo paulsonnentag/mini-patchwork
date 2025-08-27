@@ -1,7 +1,7 @@
 import "maplibre-gl/dist/maplibre-gl.css";
 import { useEffect, useRef, useState } from "react";
 import maplibregl from "maplibre-gl";
-import { useStaticCallback } from "../../../shared/useStaticCalback";
+import { useStaticCallback } from "../../../lib/useStaticCalback";
 
 export const MapLibreMap = ({
   markers,

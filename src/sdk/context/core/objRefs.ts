@@ -1,6 +1,6 @@
 import * as Automerge from "@automerge/automerge";
 import { DocHandle } from "@automerge/automerge-repo";
-import { lookup } from "../../../shared/lookup";
+import { lookup } from "../../../lib/lookup";
 
 export abstract class ObjRef<Obj = unknown, Doc = unknown> {
   protected readonly docHandle: DocHandle<Doc>;

@@ -6,7 +6,7 @@ import { Decoration, DecorationSet, EditorView } from "@codemirror/view";
 import { basicSetup } from "codemirror";
 import { useEffect, useRef, useState } from "react";
 import "./codemirror.css";
-import { lookup } from "../../../shared/lookup";
+import { lookup } from "../../../lib/lookup";
 
 type CodemirrorProps = {
   docUrl: AutomergeUrl;

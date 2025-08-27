@@ -1,9 +1,9 @@
 import { Field, FieldType } from "./fields";
-import type { ObjRef } from "./objRefs";
+import { TextSpanRef, type ObjRef } from "./objRefs";
 
 type Transaction = {
-  additionsByObject: Map<string, number>;
-  fieldAdditions: Map<string, Map<FieldType<any>, any[]>>;
+  addedObjIds: Set<string>;
+  addedFieldsByObjId: Map<string, Field[]>;
 };
 
 export class Context {
@@ -18,71 +18,89 @@ export class Context {
 
   #addObject(transaction: Transaction, obj: ObjRef): void {
     const key = obj.toKey();
-    const current = this.#objectRefs.get(key) ?? 0;
-    this.#objectRefs.set(key, current + 1);
-    if (!this.#keyToRef.has(key)) {
-      this.#keyToRef.set(key, obj);
+
+    if (transaction.addedObjIds.has(key)) {
+      return;
     }
-    transaction.additionsByObject.set(
-      key,
-      (transaction.additionsByObject.get(key) ?? 0) + 1
-    );
+
+    // add object to transaction
+    const currentCount = this.#objectRefs.get(key) ?? 0;
+    this.#objectRefs.set(key, currentCount + 1);
+    transaction.addedObjIds.add(key);
+
+    if (this.#keyToRef.has(key)) {
+      return;
+    }
+
+    // add object to stored map
+    this.#keyToRef.set(key, obj);
   }
 
   #addField(transaction: Transaction, obj: ObjRef, field: Field): void {
-    const key = obj.toKey();
-    let byType = this.#fields.get(key);
+    const objId = obj.toKey();
+    let byType = this.#fields.get(objId);
     if (!byType) {
       byType = new Map();
-      this.#fields.set(key, byType);
+      this.#fields.set(objId, byType);
     }
-    const typeKey = field.type as FieldType<any>;
-    let list = byType.get(typeKey);
+
+    const type = field.type as FieldType<any>;
+    let list = byType.get(type);
     if (!list) {
       list = [];
-      byType.set(typeKey, list);
+      byType.set(type, list);
     }
     list.push(field.value);
 
-    let addedByType = transaction.fieldAdditions.get(key);
-    if (!addedByType) {
-      addedByType = new Map();
-      transaction.fieldAdditions.set(key, addedByType);
+    let addedFields = transaction.addedFieldsByObjId.get(objId);
+    if (!addedFields) {
+      addedFields = [];
+      transaction.addedFieldsByObjId.set(objId, addedFields);
     }
-    let addedList = addedByType.get(typeKey);
-    if (!addedList) {
-      addedList = [];
-      addedByType.set(typeKey, addedList);
-    }
-    addedList.push(field.value);
+    addedFields.push(field);
   }
 
   #retract(transaction: Transaction) {
-    // retract fields
-    for (const [key, byType] of transaction.fieldAdditions.entries()) {
-      const existingByType = this.#fields.get(key);
-      if (!existingByType) continue;
-      for (const [typeKey, addedList] of byType.entries()) {
-        const existingList = existingByType.get(typeKey);
-        if (!existingList) continue;
-        for (const value of addedList) {
-          const idx = existingList.lastIndexOf(value);
-          if (idx !== -1) existingList.splice(idx, 1);
-        }
-        if (existingList.length === 0) existingByType.delete(typeKey);
+    // retract objects
+    for (const objId of transaction.addedObjIds.values()) {
+      const count = this.#objectRefs.get(objId);
+      if (!count) {
+        continue;
       }
-      if (existingByType.size === 0) this.#fields.delete(key);
+
+      const next = count - 1;
+      if (next > 0) {
+        this.#objectRefs.set(objId, next);
+      } else {
+        this.#objectRefs.delete(objId);
+        this.#keyToRef.delete(objId);
+        this.#fields.delete(objId);
+      }
     }
 
-    // retract object counts
-    for (const [key, addedCount] of transaction.additionsByObject.entries()) {
-      const current = this.#objectRefs.get(key) ?? 0;
-      const next = current - addedCount;
-      if (next > 0) {
-        this.#objectRefs.set(key, next);
-      } else {
-        this.#objectRefs.delete(key);
-        this.#keyToRef.delete(key);
+    // retract fields
+    for (const [
+      objId,
+      addedFields,
+    ] of transaction.addedFieldsByObjId.entries()) {
+      const objFieldsByType = this.#fields.get(objId);
+      if (!objFieldsByType) continue;
+
+      for (const field of addedFields) {
+        const objFieldValues = objFieldsByType.get(field.type);
+
+        if (!objFieldValues) {
+          return;
+        }
+
+        const indexToDelete = objFieldValues.findIndex(
+          (otherField) => otherField === field
+        );
+        objFieldValues.splice(indexToDelete, 1);
+
+        if (objFieldValues.length === 0) {
+          objFieldsByType.delete(field.type);
+        }
       }
     }
   }
@@ -112,11 +130,16 @@ export class Context {
     const result: Array<[unknown, string, unknown]> = [];
     for (const [key, byType] of this.#fields.entries()) {
       const ref = this.#keyToRef.get(key);
-      const objValue = ref ? ref.value : undefined;
       for (const [fieldType, list] of byType.entries()) {
         const fieldName = fieldType.fieldName;
         for (const value of list) {
-          result.push([objValue, fieldName, value]);
+          result.push([
+            `${ref?.path.join(".")}${
+              ref instanceof TextSpanRef ? `[${ref.from}:${ref.to}]` : ""
+            }`,
+            fieldName,
+            value,
+          ]);
         }
       }
     }
@@ -125,9 +148,9 @@ export class Context {
 
   // return function that retracts the changes
   change(fn: (context: MutableContext) => void): () => void {
-    const transaction = {
-      additionsByObject: new Map<string, number>(),
-      fieldAdditions: new Map<string, Map<FieldType<any>, any[]>>(),
+    const transaction: Transaction = {
+      addedObjIds: new Set(),
+      addedFieldsByObjId: new Map<string, Field[]>(),
     };
 
     const mutableContext = new MutableContext(
@@ -172,7 +195,7 @@ export class MutableObjectContext {
     this.#addField = addField;
   }
 
-  with(field: Field): MutableObjectContext {
+  with(field: Field<any>): MutableObjectContext {
     this.#addField(field);
     return this;
   }

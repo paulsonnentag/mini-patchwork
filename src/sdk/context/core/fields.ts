@@ -1,5 +1,5 @@
 export class Field<T = unknown> {
-  constructor(readonly value: T, readonly type: Function) {}
+  constructor(readonly value: T, readonly type: FieldType<T>) {}
 
   isA(type: Function): boolean {
     return type === this.type;

@@ -3,7 +3,10 @@ import { Decoration, DecorationSet, WidgetType } from "@codemirror/view";
 import { useEffect, useMemo, useState } from "react";
 import { defineField } from "../../sdk/context/core/fields";
 import { ObjRef, PathRef, TextSpanRef } from "../../sdk/context/core/objRefs";
-import { useSharedContext } from "../../sdk/context/core/sharedContext";
+import {
+  useDerivedSharedContext,
+  useSharedContext,
+} from "../../sdk/context/core/sharedContext";
 import { useSelection } from "../../sdk/context/selection";
 import { useStaticCallback } from "../../lib/useStaticCalback";
 import {
@@ -51,76 +54,81 @@ export const MarkdownEditor = ({ docUrl }: EditorProps) => {
     };
   }, [repo, handle, doc]);
 
-  // add links to context
-  useEffect(
-    () =>
-      context.change((context) => {
-        linkedDocs.forEach((linkedDoc) => {
-          context.add(linkedDoc.docRef);
-          context.add(linkedDoc.linkRef).with(
-            Link({
-              target: linkedDoc.docRef,
-            })
-          );
-        });
-      }),
-    [linkedDocs]
-  );
+  // // add links to context
+  // useEffect(
+  //   () =>
+  //     context.change((context) => {
+  //       linkedDocs.forEach((linkedDoc) => {
+  //         context.add(linkedDoc.docRef);
+  //         context.add(linkedDoc.linkRef).with(
+  //           Link({
+  //             target: linkedDoc.docRef,
+  //           })
+  //         );
+  //       });
+  //     }),
+  //   [linkedDocs]
+  // );
+
+  useDerivedSharedContext((context) => {
+    console.log("CONTEXT ====");
+
+    for (const entry of context.dump()) {
+      console.log(entry);
+    }
+  });
 
   // compute decorations
-  const decorations = useMemo<DecorationSet>(
-    () =>
-      RangeSet.of<Decoration>(
-        [
-          // links
-          ...linkedDocs.map((linkedDoc) => {
-            const isLinkSelected =
-              isSelected(linkedDoc.linkRef) || isSelected(linkedDoc.docRef);
+  const decorations = useMemo<DecorationSet>(() => {
+    console.log("recompute decorations");
+    return RangeSet.of<Decoration>(
+      [
+        // links
+        ...linkedDocs.map((linkedDoc) => {
+          const isLinkSelected =
+            isSelected(linkedDoc.linkRef) || isSelected(linkedDoc.docRef);
 
+          return Decoration.mark({
+            class: isLinkSelected ? "bg-yellow-200" : "bg-yellow-100",
+          }).range(linkedDoc.linkRef.from, linkedDoc.linkRef.to);
+        }),
+
+        // diff
+        ...contentDiffs.flatMap((annotation) => {
+          const diff = annotation.field as DiffValue<string>;
+          const textSpan = annotation.objRef as TextSpanRef;
+
+          if (diff.type === "deleted") {
+            return makeDeleteDecoration({
+              deletedText: diff.before,
+              isActive: isSelected(textSpan),
+            }).range(textSpan.from, textSpan.from);
+          }
+
+          if (diff.type === "added") {
             return Decoration.mark({
-              class: isLinkSelected ? "bg-yellow-200" : "bg-yellow-100",
-            }).range(linkedDoc.linkRef.from, linkedDoc.linkRef.to);
-          }),
+              class: `border-b border-green-300 ${
+                isSelected(textSpan) ? "bg-green-300" : "bg-green-100"
+              }`,
+            }).range(textSpan.from, textSpan.to);
+          }
 
-          // diff
-          ...contentDiffs.flatMap((annotation) => {
-            const diff = annotation.field as DiffValue<string>;
-            const textSpan = annotation.objRef as TextSpanRef;
-
-            if (diff.type === "deleted") {
-              return makeDeleteDecoration({
-                deletedText: diff.before,
-                isActive: isSelected(textSpan),
-              }).range(textSpan.from, textSpan.from);
-            }
-
-            if (diff.type === "added") {
-              return Decoration.mark({
-                class: `border-b border-green-300 ${
-                  isSelected(textSpan) ? "bg-green-300" : "bg-green-100"
-                }`,
-              }).range(textSpan.from, textSpan.to);
-            }
-
-            return [];
-          }),
-        ],
-        true // sort ranges
-      ),
-    [linkedDocs, isSelected, contentDiffs]
-  );
+          return [];
+        }),
+      ],
+      true // sort ranges
+    );
+  }, [linkedDocs, isSelected, contentDiffs]);
 
   const onChangeSelection = useStaticCallback((from: number, to: number) => {
     const selectedText = new TextSpanRef(handle, ["content"], from, to);
     const overlappingLinks = linkedDocs.filter((linkedDoc) =>
       selectedText.doesOverlap(linkedDoc.linkRef)
     );
-
     const selectedObjects: ObjRef[] = [
       selectedText,
       ...overlappingLinks.map((linkedDoc) => linkedDoc.docRef),
     ];
-
     setSelection(selectedObjects);
   });
 

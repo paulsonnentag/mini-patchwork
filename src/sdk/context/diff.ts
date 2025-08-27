@@ -56,8 +56,6 @@ export const useAddDiffOfDoc = (
         Automerge.getHeads(docAfter)
       );
 
-      console.log("patches", patches);
-
       retract();
       retract = context.change((tx) => {
         // Track which ancestor paths we've marked as modified during this pass
@@ -76,7 +74,6 @@ export const useAddDiffOfDoc = (
             const ancestorSubPath = ancestorPath.slice(0, i);
             const key = JSON.stringify(ancestorSubPath);
             if (modifiedPaths.has(key)) break;
-
             const ancestorRef = new PathRef(docHandle, ancestorSubPath);
             const before = lookup(docBefore, ancestorSubPath);
 
@@ -99,22 +96,38 @@ export const useAddDiffOfDoc = (
 
             case "del": {
               // is this a span deletion?
-              if (patch.length !== undefined) {
+              if (typeof last(patch.path) === "number") {
+                const length = patch.length ?? 1;
                 const parentPath = patch.path.slice(0, -1);
                 const parent = lookup(docBefore, parentPath);
 
+                console.log("position", last(patch.path));
+
                 // for text mark the span as deleted
                 if (typeof parent === "string") {
-                  const from = last(patch.path) as number;
-                  const to = from + patch.length;
-                  const before = parent.slice(from, to);
+                  const position = last(patch.path) as number;
+                  // const cursor = Automerge.getCursor(
+                  //   docAfter,
+                  //   parentPath,
+                  //   position
+                  // );
+
+                  // const from = Automerge.getCursorPosition(
+                  //   docBefore,
+                  //   parentPath,
+                  //   cursor
+                  // );
+                  // const to = from + patch.length;
 
                   const textSpan = new TextSpanRef(
                     docHandle,
                     parentPath,
-                    from,
-                    to
+                    position,
+                    position
                   );
+
+                  // todo: implement
+                  const before = "";
 
                   tx.add(textSpan).with(Diff({ type: "deleted", before }));
 

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { defineField } from "./core/fields";
 import {
   useDerivedSharedContext,
@@ -17,6 +17,8 @@ export const useSelection = () => {
   );
 
   const setSelection = useMemo(() => {
+    console.log("setSelection");
+
     let retract = () => {};
 
     return (objRefs: ObjRef[]) => {

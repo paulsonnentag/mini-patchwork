@@ -14,6 +14,7 @@ import {
 import { DocHandle, DocumentId, Repo } from "@automerge/automerge-repo";
 import { EditorProps } from "../../sdk/types";
 import { Codemirror } from "./lib/codemirror";
+import { useGetAllDiffs } from "../../sdk/context/diff";
 
 export type MarkdownDoc = {
   content: string;
@@ -29,6 +30,10 @@ export const MarkdownEditor = ({ docUrl }: EditorProps) => {
   const handle = useDocHandle<MarkdownDoc>(docUrl, { suspense: true });
   const context = useSharedContext();
   const { isSelected, setSelection } = useSelection();
+
+  const getAllDiffs = useGetAllDiffs();
+
+  console.log("getAllDiffs", getAllDiffs(new PathRef(handle, ["content"])));
 
   // parse links
   const [linkedDocs, setLinkedDocs] = useState<LinkedDocs[]>([]);

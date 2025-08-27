@@ -41,10 +41,6 @@ export const MapView = () => {
     [objRefsWithLatLng, isSelected]
   );
 
-  for (const marker of markers) {
-    console.log("marker", marker);
-  }
-
   return (
     <div className="w-full h-full">
       <MapLibreMap

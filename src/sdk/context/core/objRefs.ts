@@ -138,9 +138,7 @@ export class IdRef<
   }
 }
 
-export class TextSpanRef<
-  Doc extends Automerge.Doc<unknown> = Automerge.Doc<unknown>
-> extends ObjRef<string, Doc> {
+export class TextSpanRef<Doc> extends ObjRef<string, Doc> {
   private readonly fromCursor: Automerge.Cursor;
   private readonly toCursor: Automerge.Cursor;
   readonly from: number;

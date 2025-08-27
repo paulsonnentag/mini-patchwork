@@ -32,10 +32,13 @@ export const Branched = ({ docUrl, tool: Tool }: BranchedProps) => {
   const repo = useRepo();
   const [selectedBranch, setSelectedBranch] = useState<Branch | null>(null);
   const checkedOutDocUrl = selectedBranch?.docUrl ?? docUrl;
+  const docHandle = useDocHandle(checkedOutDocUrl, {
+    suspense: true,
+  });
   const [doc, changeDoc] = useDocument<DocWithBranchesMetadata>(docUrl, {
     suspense: true,
   });
-  const [highlightChanges, setHighlightChanges] = useState(false);
+  const [highlightChanges, setHighlightChanges] = useState(true);
 
   const checkedOutDocHandle = useDocHandle(checkedOutDocUrl, {
     suspense: true,
@@ -59,6 +62,11 @@ export const Branched = ({ docUrl, tool: Tool }: BranchedProps) => {
       });
     }
   }, [shouldAddBranchesDocUrl, docUrl, repo, changeDoc]);
+
+  // expose docHandle to window for debugging
+  useEffect(() => {
+    (window as any).handle = docHandle;
+  }, [docHandle]);
 
   const [branchesDoc, changeBranchesDoc] = useDocument<BranchesDoc>(
     doc.branchesDocUrl,

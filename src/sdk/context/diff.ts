@@ -3,11 +3,12 @@ import { DocHandle } from "@automerge/automerge-repo";
 import { useCallback, useEffect } from "react";
 import { lookup } from "../../lib/lookup";
 import { defineField } from "./core/fields";
-import { ObjRef, PathRef } from "./core/objRefs";
+import { ObjRef, PathRef, TextSpanRef } from "./core/objRefs";
 import {
   useDerivedSharedContext,
   useSharedContext,
 } from "./core/sharedContext";
+import { last } from "../../lib/last";
 
 type AddedDiff = {
   type: "added";
@@ -33,6 +34,8 @@ export const useAddDiffOfDoc = (
 ) => {
   const context = useSharedContext();
 
+  console.log("add diff", docHandle.url, headsBefore);
+
   useEffect(() => {
     if (!headsBefore) {
       return;
@@ -41,15 +44,18 @@ export const useAddDiffOfDoc = (
     let retract = () => {};
 
     const onChange = () => {
-      const patches = Automerge.diff(
-        docHandle.doc(),
-        headsBefore,
-        Automerge.getHeads(docHandle.doc())
-      );
       const docBefore = Automerge.view(docHandle.doc(), headsBefore);
+      const docAfter = docHandle.doc();
+
+      const patches = Automerge.diff(
+        docAfter,
+        headsBefore,
+        Automerge.getHeads(docAfter)
+      );
+
+      console.log("patches", patches);
 
       retract();
-
       retract = context.change((tx) => {
         // Track which ancestor paths we've marked as modified during this pass
         const modifiedPaths = new Set<string>();
@@ -82,11 +88,43 @@ export const useAddDiffOfDoc = (
             case "put":
               tx.add(objRef).with(Diff({ type: "added" }));
               break;
+
             case "del": {
-              const before = lookup(docBefore, patch.path);
-              tx.add(objRef).with(Diff({ type: "deleted", before }));
+              // is this a span deletion?
+              if (patch.length !== undefined) {
+                const parentPath = patch.path.slice(0, -1);
+                const parent = lookup(docBefore, parentPath);
+
+                // for text mark the span as deleted
+                if (typeof parent === "string") {
+                  const from = last(patch.path) as number;
+                  const to = from + patch.length;
+                  const before = parent.slice(from, to);
+
+                  const textSpan = new TextSpanRef(
+                    docHandle,
+                    parentPath,
+                    from,
+                    to
+                  );
+
+                  tx.add(textSpan).with(Diff({ type: "deleted", before }));
+
+                  // for arrays mark the indiviual objects in the range as deleted
+                } else if (Array.isArray(parent)) {
+                  throw new Error("not implemented");
+                } else {
+                  throw new Error("Unexpected value, this should never happen");
+                }
+
+                // ... otherwise this is a deletion of a key in an object
+              } else {
+                const before = lookup(docBefore, patch.path);
+                tx.add(objRef).with(Diff({ type: "deleted", before }));
+              }
               break;
             }
+
             case "insert": {
               tx.add(objRef).with(Diff({ type: "added" }));
               break;
@@ -95,6 +133,8 @@ export const useAddDiffOfDoc = (
         }
       });
     };
+
+    console.log("run effect");
 
     onChange();
 
@@ -132,6 +172,20 @@ export const useGetDiff = (): ((objRef: ObjRef) => DiffValue | undefined) => {
     (objRef: ObjRef) =>
       diffAnnotations.find((annotation) => annotation.objRef.isEqual(objRef))
         ?.field,
+    [diffAnnotations]
+  );
+};
+
+export const useGetAllDiffs = (): ((
+  objRef: ObjRef
+) => Annotation<DiffValue>[]) => {
+  const diffAnnotations: Annotation<DiffValue>[] = useAllDiffs();
+
+  return useCallback(
+    (objRef: ObjRef) =>
+      diffAnnotations.filter((annotation) =>
+        annotation.objRef.isPartOf(objRef)
+      ),
     [diffAnnotations]
   );
 };

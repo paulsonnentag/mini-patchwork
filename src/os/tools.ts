@@ -7,7 +7,7 @@ import { useDocument } from "@automerge/automerge-repo-react-hooks";
 import { useEffect, useState } from "react";
 import { PatchworkDoc } from "../sdk/types";
 
-export const TOOLS: Tool[] = [EmbarkTool, MarkdownTool, TodoTool];
+export const TOOLS: Tool[] = [MarkdownTool, EmbarkTool, TodoTool];
 
 export const getEditor = (dataType: string) => {
   const tool = TOOLS.find((tool) => tool.supportsDatatypes.includes(dataType));

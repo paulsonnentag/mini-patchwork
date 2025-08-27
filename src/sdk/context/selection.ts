@@ -16,13 +16,6 @@ export const useSelection = () => {
       .filter((objRef) => context.getField(objRef, IsSelected) === true)
   );
 
-  useEffect(() => {
-    console.log(
-      "selectedObjRefs",
-      selectedObjRefs.map((objRef) => objRef.value)
-    );
-  }, [selectedObjRefs]);
-
   const setSelection = useMemo(() => {
     let retract = () => {};
 

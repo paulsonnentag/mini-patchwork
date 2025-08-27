@@ -23,8 +23,6 @@ export const Frame = () => {
   const selectedDataType = doc ? doc["@pathwork"]?.type : undefined;
   const tools = selectedDataType ? getCompatibleTools(selectedDataType) : [];
 
-  console.log("tools", tools);
-
   const addNewDocument = (template: DataTypeTemplate) => {
     const docHandle = repo.create<PatchworkDoc>();
     docHandle.change((doc) => {
@@ -72,13 +70,14 @@ export const Frame = () => {
         ))}
       </div>
 
-      <div className="flex-1">
+      <div className="flex-1 flex flex-col">
         <div className="flex h-[57px] items-center border-b border-gray-300 p-2">
           <div className="w-full" />
           <div className="flex gap-2">
             {doc &&
               tools.map((tool) => (
                 <button
+                  key={tool.id}
                   className={`border ${
                     selectedTool === tool
                       ? "border-blue-500"
@@ -91,7 +90,6 @@ export const Frame = () => {
               ))}
           </div>
         </div>
-
         {selectedTool && selectedDocUrl && (
           <Branched docUrl={selectedDocUrl} tool={selectedTool.editor} />
         )}

@@ -61,16 +61,21 @@ export const useAddDiffOfDoc = (
         const modifiedPaths = new Set<string>();
 
         for (const patch of patches) {
+          const ancestorPath =
+            typeof last(patch.path) === "number"
+              ? patch.path.slice(0, -1)
+              : patch.path;
+
           // First, ensure ancestors are marked as modified incrementally.
           // We assume patches are ordered from higher-level to lower-level paths.
           // Add modified for all ancestors above the leaf (exclude root and the leaf itself).
-          for (let i = patch.path.length; i > 0; i--) {
-            const ancestorPath = patch.path.slice(0, i);
-            const key = JSON.stringify(ancestorPath);
+          for (let i = ancestorPath.length; i > 0; i--) {
+            const ancestorSubPath = ancestorPath.slice(0, i);
+            const key = JSON.stringify(ancestorSubPath);
             if (modifiedPaths.has(key)) break;
 
-            const ancestorRef = new PathRef(docHandle, ancestorPath);
-            const before = lookup(docBefore, ancestorPath);
+            const ancestorRef = new PathRef(docHandle, ancestorSubPath);
+            const before = lookup(docBefore, ancestorSubPath);
 
             if (before) {
               tx.add(ancestorRef).with(Diff({ type: "changed", before }));
@@ -129,6 +134,15 @@ export const useAddDiffOfDoc = (
               tx.add(objRef).with(Diff({ type: "added" }));
               break;
             }
+
+            case "splice": {
+              const parentPath = patch.path.slice(0, -1);
+              const from = last(patch.path) as number;
+              const to = from + patch.value.length;
+              const textSpan = new TextSpanRef(docHandle, parentPath, from, to);
+
+              tx.add(textSpan).with(Diff({ type: "added" }));
+            }
           }
         }
       });
@@ -176,15 +190,17 @@ export const useGetDiff = (): ((objRef: ObjRef) => DiffValue | undefined) => {
   );
 };
 
-export const useGetAllDiffs = (): ((
+export const useGetDiffsAt = (): ((
   objRef: ObjRef
 ) => Annotation<DiffValue>[]) => {
   const diffAnnotations: Annotation<DiffValue>[] = useAllDiffs();
 
   return useCallback(
     (objRef: ObjRef) =>
-      diffAnnotations.filter((annotation) =>
-        annotation.objRef.isPartOf(objRef)
+      diffAnnotations.filter(
+        (annotation) =>
+          annotation.objRef.isPartOf(objRef) &&
+          !annotation.objRef.isEqual(objRef)
       ),
     [diffAnnotations]
   );

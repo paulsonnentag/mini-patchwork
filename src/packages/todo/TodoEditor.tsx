@@ -20,12 +20,8 @@ export type TodoDoc = {
 };
 
 export const TodoEditor = ({ docUrl }: EditorProps) => {
-  const [doc, changeDoc] = useDocument<TodoDoc>(docUrl, {
-    suspense: true,
-  });
-  const docHandle = useDocHandle<TodoDoc>(docUrl, {
-    suspense: true,
-  });
+  const [doc, changeDoc] = useDocument<TodoDoc>(docUrl);
+  const docHandle = useDocHandle<TodoDoc>(docUrl);
   const [text, setText] = useState("");
 
   const addTodo = () => {
@@ -43,6 +39,7 @@ export const TodoEditor = ({ docUrl }: EditorProps) => {
 
   // todo: this sucks, doc handle might be out of sync with the doc state
   if (
+    !docHandle ||
     !docHandle.doc() ||
     !docHandle.doc().todos ||
     !doc ||

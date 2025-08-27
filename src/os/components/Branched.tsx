@@ -11,7 +11,7 @@ import { EditorProps } from "../../sdk/types";
 
 type BranchedProps = EditorProps & {
   docUrl: string;
-  tool: React.FC<EditorProps>;
+  tool: React.FC<EditorPropxs>;
 };
 
 type Branch = {
@@ -32,17 +32,11 @@ export const Branched = ({ docUrl, tool: Tool }: BranchedProps) => {
   const repo = useRepo();
   const [selectedBranch, setSelectedBranch] = useState<Branch | null>(null);
   const checkedOutDocUrl = selectedBranch?.docUrl ?? docUrl;
-  const docHandle = useDocHandle(checkedOutDocUrl, {
-    suspense: true,
-  });
-  const [doc, changeDoc] = useDocument<DocWithBranchesMetadata>(docUrl, {
-    suspense: true,
-  });
+  const docHandle = useDocHandle(checkedOutDocUrl);
+  const [doc, changeDoc] = useDocument<DocWithBranchesMetadata>(docUrl);
   const [highlightChanges, setHighlightChanges] = useState(true);
 
-  const checkedOutDocHandle = useDocHandle(checkedOutDocUrl, {
-    suspense: true,
-  });
+  const checkedOutDocHandle = useDocHandle(checkedOutDocUrl);
 
   useAddDiffOfDoc(
     checkedOutDocHandle,
@@ -69,10 +63,7 @@ export const Branched = ({ docUrl, tool: Tool }: BranchedProps) => {
   }, [docHandle]);
 
   const [branchesDoc, changeBranchesDoc] = useDocument<BranchesDoc>(
-    doc.branchesDocUrl,
-    {
-      suspense: true,
-    }
+    doc?.branchesDocUrl
   );
 
   const createBranch = () => {

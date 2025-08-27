@@ -23,7 +23,7 @@ export const Codemirror = ({
 }: CodemirrorProps) => {
   const [container, setContainer] = useState<HTMLDivElement | null>(null);
 
-  const handle = useDocHandle(docUrl, { suspense: true });
+  const handle = useDocHandle(docUrl);
 
   // Effect and field to manage external decorations without remounting editor
   const setDecorations = useRef(StateEffect.define<DecorationSet>()).current;
@@ -47,7 +47,7 @@ export const Codemirror = ({
 
   // Initialize the editor once
   useEffect(() => {
-    if (!container) return;
+    if (!container || !handle) return;
 
     const initialDoc = lookup(handle.doc(), path);
 

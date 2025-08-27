@@ -9,6 +9,7 @@ import { DataTypeTemplate, PatchworkDoc } from "../../sdk/types";
 import { DATA_TYPE_TEMPLATES, getDataType } from "../datatypes";
 import { getCompatibleTools, getEditor, useSelectedTool } from "../tools";
 import { Branched } from "./Branched";
+import { startTransition } from "react";
 
 type AccountDoc = {
   documents: AutomergeUrl[];
@@ -64,7 +65,9 @@ export const Frame = () => {
           <DocumentLink
             key={docUrl}
             docUrl={docUrl}
-            onSelect={() => setSelectedDocUrl(docUrl)}
+            onSelect={() => {
+              setSelectedDocUrl(docUrl);
+            }}
             isSelected={docUrl === selectedDocUrl}
           />
         ))}
@@ -91,7 +94,11 @@ export const Frame = () => {
           </div>
         </div>
         {selectedTool && selectedDocUrl && (
-          <Branched docUrl={selectedDocUrl} tool={selectedTool.editor} />
+          <Branched
+            docUrl={selectedDocUrl}
+            tool={selectedTool.editor}
+            key={selectedDocUrl}
+          />
         )}
       </div>
     </div>
@@ -107,11 +114,9 @@ export const DocumentLink = ({
   onSelect: () => void;
   isSelected: boolean;
 }) => {
-  const [doc, changeDoc] = useDocument<PatchworkDoc>(docUrl, {
-    suspense: true,
-  });
+  const [doc] = useDocument<PatchworkDoc>(docUrl);
 
-  const dataType = getDataType(doc?.["@pathwork"]?.type);
+  const dataType = doc ? getDataType(doc?.["@pathwork"]?.type) : undefined;
 
   return (
     <button

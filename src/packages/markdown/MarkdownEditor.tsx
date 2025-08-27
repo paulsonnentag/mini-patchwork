@@ -1,6 +1,6 @@
 import { RangeSet } from "@codemirror/state";
 import { Decoration, DecorationSet, WidgetType } from "@codemirror/view";
-import { useEffect, useMemo, useState } from "react";
+import { useContext, useEffect, useMemo, useState } from "react";
 import { defineField } from "../../sdk/context/core/fields";
 import { ObjRef, PathRef, TextSpanRef } from "../../sdk/context/core/objRefs";
 import {
@@ -29,18 +29,28 @@ const PATH = ["content"];
 
 export const MarkdownEditor = ({ docUrl }: EditorProps) => {
   const repo = useRepo();
-  const [doc] = useDocument(docUrl, { suspense: true });
-  const handle = useDocHandle<MarkdownDoc>(docUrl, { suspense: true });
-  const context = useSharedContext();
+  const [doc] = useDocument(docUrl);
+  const handle = useDocHandle<MarkdownDoc>(docUrl);
   const { isSelected, setSelection } = useSelection();
+  const context = useSharedContext();
   const getDiffsAt = useGetDiffsAt();
 
-  const contentDiffs = getDiffsAt(new PathRef(handle, ["content"]));
+  // todo:  another weird doc handle issue
+  const contentDiffs = getDiffsAt(
+    handle && (handle.doc() as any)["@patchwork"]?.type === "markdown"
+      ? new PathRef(handle, ["content"])
+      : undefined
+  );
 
   // parse links
   const [linkedDocs, setLinkedDocs] = useState<LinkedDocs[]>([]);
   useEffect(() => {
     let isCanceled = false;
+
+    if (!handle) {
+      setLinkedDocs([]);
+      return;
+    }
 
     parseMarkdownLinks(repo, handle).then((links) => {
       if (isCanceled) {
@@ -54,21 +64,21 @@ export const MarkdownEditor = ({ docUrl }: EditorProps) => {
     };
   }, [repo, handle, doc]);
 
-  // // add links to context
-  // useEffect(
-  //   () =>
-  //     context.change((context) => {
-  //       linkedDocs.forEach((linkedDoc) => {
-  //         context.add(linkedDoc.docRef);
-  //         context.add(linkedDoc.linkRef).with(
-  //           Link({
-  //             target: linkedDoc.docRef,
-  //           })
-  //         );
-  //       });
-  //     }),
-  //   [linkedDocs]
-  // );
+  //  add links to context
+  useEffect(
+    () =>
+      context.change((context) => {
+        linkedDocs.forEach((linkedDoc) => {
+          context.add(linkedDoc.docRef);
+          context.add(linkedDoc.linkRef).with(
+            Link({
+              target: linkedDoc.docRef,
+            })
+          );
+        });
+      }),
+    [linkedDocs]
+  );
 
   useDerivedSharedContext((context) => {
     console.log("CONTEXT ====");
@@ -121,6 +131,10 @@ export const MarkdownEditor = ({ docUrl }: EditorProps) => {
   }, [linkedDocs, isSelected, contentDiffs]);
 
   const onChangeSelection = useStaticCallback((from: number, to: number) => {
+    if (!handle) {
+      return;
+    }
+
     const selectedText = new TextSpanRef(handle, ["content"], from, to);
     const overlappingLinks = linkedDocs.filter((linkedDoc) =>
       selectedText.doesOverlap(linkedDoc.linkRef)

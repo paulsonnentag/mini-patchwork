@@ -32,15 +32,13 @@ export type DiffValue<T = unknown> =
 const Diff = defineField<DiffValue>("diff");
 
 export const useAddDiffOfDoc = (
-  docHandle: DocHandle<unknown>,
+  docHandle?: DocHandle<unknown>,
   headsBefore?: Automerge.Heads
 ) => {
   const context = useSharedContext();
 
-  console.log("add diff", docHandle.url, headsBefore);
-
   useEffect(() => {
-    if (!headsBefore) {
+    if (!headsBefore || !docHandle) {
       return;
     }
 
@@ -164,10 +162,7 @@ export const useAddDiffOfDoc = (
       });
     };
 
-    console.log("run effect");
-
     onChange();
-
     docHandle.on("change", onChange);
 
     return () => {
@@ -207,17 +202,22 @@ export const useGetDiff = (): ((objRef: ObjRef) => DiffValue | undefined) => {
 };
 
 export const useGetDiffsAt = (): ((
-  objRef: ObjRef
+  objRef?: ObjRef
 ) => Annotation<DiffValue>[]) => {
   const diffAnnotations: Annotation<DiffValue>[] = useAllDiffs();
 
   return useCallback(
-    (objRef: ObjRef) =>
-      diffAnnotations.filter(
+    (objRef?: ObjRef) => {
+      if (!objRef) {
+        return [];
+      }
+
+      return diffAnnotations.filter(
         (annotation) =>
           annotation.objRef.isPartOf(objRef) &&
           !annotation.objRef.isEqual(objRef)
-      ),
+      );
+    },
     [diffAnnotations]
   );
 };

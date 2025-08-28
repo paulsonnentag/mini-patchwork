@@ -41,7 +41,7 @@ export const DocListSidebar = ({
   };
 
   return (
-    <div className="w-[200px] flex-shrink-0 flex flex-col gap-2 bg-gray-100 p-2">
+    <div className="w-[200px] flex-shrink-0 flex flex-col gap-2 bg-gray-100 p-2 border-r border-gray-300">
       <div className="text-gray-500">Mini Patchwork</div>
 
       <div className="border-b border-gray-300"></div>

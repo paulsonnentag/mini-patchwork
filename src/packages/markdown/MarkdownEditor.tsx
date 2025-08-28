@@ -151,7 +151,7 @@ export const MarkdownEditor = ({ docUrl }: ToolProps) => {
   });
 
   return (
-    <div className="w-full h-full border border-gray-300">
+    <div className="w-full h-full">
       <Codemirror
         docUrl={docUrl}
         path={PATH}

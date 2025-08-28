@@ -47,6 +47,11 @@ export abstract class ObjRef<Obj = unknown, Doc = unknown> {
     return true;
   }
 
+  // todo: this is not right, the method should only be available if the value is a string
+  slice(from: number, to: number) {
+    return new TextSpanRef(this.docHandle, this.path, from, to);
+  }
+
   isEqual(other: ObjRef) {
     return this.toKey() === other.toKey();
   }

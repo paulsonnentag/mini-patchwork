@@ -68,7 +68,7 @@ export const ToolsSidebar = ({ docUrl }: ToolProps) => {
         className="absolute left-0 top-0 bottom-0 w-1 cursor-col-resize z-10"
         onMouseDown={onMouseDown}
       />
-      <div className="flex items-center p-2">
+      <div className="flex items-center p-2 border-b border-gray-300">
         <ToolPicker
           selectedTool={selectedTool}
           setSelectedTool={setSelectedTool}

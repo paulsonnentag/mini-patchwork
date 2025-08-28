@@ -118,12 +118,20 @@ export class Context {
     return Array.from(this.#keyToRef.values());
   }
 
+  getAllObjRefKeys(): Set<string> {
+    return new Set(this.#keyToRef.keys());
+  }
+
   onChange(fn: () => void): () => void {
     this.#subscribers.add(fn);
 
     return () => {
       this.#subscribers.delete(fn);
     };
+  }
+
+  offChange(fn: () => void): void {
+    this.#subscribers.delete(fn);
   }
 
   dump(): Array<[unknown, string, unknown]> {

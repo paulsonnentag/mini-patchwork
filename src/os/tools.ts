@@ -6,10 +6,11 @@ import { useDocument } from "@automerge/automerge-repo-react-hooks";
 import { useEffect, useState } from "react";
 import { PatchworkDoc } from "../sdk/types";
 import { MapTool } from "../packages/map";
+import { PotluckTool } from "../packages/potluck";
 
 export const MAIN_TOOLS: Tool[] = [MarkdownTool, TodoTool];
 
-export const SIDEBAR_TOOLS: Tool[] = [MapTool];
+export const SIDEBAR_TOOLS: Tool[] = [MapTool, PotluckTool];
 
 export const getCompatibleMainTools = (doc: any) => {
   MAIN_TOOLS.filter((tool) => tool.supportsDocument(doc));

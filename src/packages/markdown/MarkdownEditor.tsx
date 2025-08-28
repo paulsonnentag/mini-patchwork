@@ -36,11 +36,15 @@ export const MarkdownEditor = ({ docUrl }: EditorProps) => {
   const getDiffsAt = useGetDiffsAt();
 
   // todo:  another weird doc handle issue
-  const contentDiffs = getDiffsAt(
+
+  const contentRef =
     handle && (handle.doc() as any)["@patchwork"]?.type === "markdown"
       ? new PathRef(handle, ["content"])
-      : undefined
-  );
+      : undefined;
+
+  const contentDiffs = getDiffsAt(contentRef);
+
+  console.log("diffs", contentDiffs, contentRef, handle.doc());
 
   // parse links
   const [linkedDocs, setLinkedDocs] = useState<LinkedDocs[]>([]);

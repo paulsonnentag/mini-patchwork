@@ -21,13 +21,13 @@ export const Frame = () => {
   const [doc, changeDoc] = useDocument<PatchworkDoc>(selectedDocUrl);
   const [accountDoc, changeAccountDoc] = useAccountDoc();
   const [selectedTool, setSelectedToolId] = useSelectedTool(selectedDocUrl);
-  const selectedDataType = doc ? doc["@pathwork"]?.type : undefined;
+  const selectedDataType = doc ? doc["@patchwork"]?.type : undefined;
   const tools = selectedDataType ? getCompatibleTools(selectedDataType) : [];
 
   const addNewDocument = (template: DataTypeTemplate) => {
     const docHandle = repo.create<PatchworkDoc>();
     docHandle.change((doc) => {
-      doc["@pathwork"] = {
+      doc["@patchwork"] = {
         type: template.dataType,
       };
       template.init(doc, repo);

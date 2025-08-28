@@ -34,7 +34,7 @@ export const useSelectedTool = (
     return [undefined, setSelectedToolId];
   }
 
-  const type = doc["@pathwork"].type;
+  const type = doc["@patchwork"].type;
 
   const selectedTool = selectedToolId
     ? TOOLS.find((tool) => tool.id === selectedToolId)

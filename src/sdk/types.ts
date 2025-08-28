@@ -24,7 +24,7 @@ export type Tool = {
 };
 
 export type PatchworkDoc = {
-  ["@pathwork"]: {
+  ["@patchwork"]: {
     type: string;
   };
 };

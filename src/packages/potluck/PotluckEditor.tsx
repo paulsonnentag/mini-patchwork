@@ -2,14 +2,11 @@ import {
   useDocHandle,
   useDocument,
 } from "@automerge/automerge-repo-react-hooks";
-import { ObjRef, PathRef, TextSpanRef } from "../../sdk/context/core/objRefs";
-import { ToolProps } from "../../sdk/types";
-import { useEffect, useState } from "react";
-import { useSharedContext } from "../../sdk/context/core/sharedContext";
 import { PlusIcon, TrashIcon } from "lucide-react";
-import * as Automerge from "@automerge/automerge";
-import { DocHandle } from "@automerge/automerge-repo";
-import { lookup } from "../../lib/lookup";
+import { useEffect, useState } from "react";
+import { ObjRef, PathRef, TextSpanRef } from "../../sdk/context/core/objRefs";
+import { useSharedContext } from "../../sdk/context/core/sharedContext";
+import { ToolProps } from "../../sdk/types";
 
 type PotluckSearch = {
   pattern: string;
@@ -93,7 +90,7 @@ export const PotluckSearch = ({
   useEffect(() => {
     const pattern = searchRef.value.pattern;
 
-    let allMatches: Match[] = [];
+    const matchKeys = new Set<string>();
 
     const onChange = () => {
       if (pattern === "") {
@@ -110,9 +107,15 @@ export const PotluckSearch = ({
         return;
       }
 
-      const matches = context
-        .getAllObjRefs()
-        .flatMap((objRef) => findMatches(objRef, regExp));
+      const matches = context.getAllObjRefs().flatMap((objRef) =>
+        findMatches(objRef, regExp).filter((m) => {
+          if (matchKeys.has(m.textSpan.toKey())) {
+            return false;
+          }
+          matchKeys.add(m.textSpan.toKey());
+          return true;
+        })
+      );
 
       setMatches(matches);
       setError(null);
@@ -241,5 +244,6 @@ const findMatches = (objRef: ObjRef<unknown>, regex: RegExp): Match[] => {
       regex.lastIndex++;
     }
   }
+
   return matches;
 };

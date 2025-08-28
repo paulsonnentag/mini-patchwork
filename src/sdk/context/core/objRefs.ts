@@ -209,6 +209,15 @@ export class TextSpanRef<Doc = unknown> extends ObjRef<string, Doc> {
     return aEnd > bStart && bEnd > aStart;
   }
 
+  slice(from: number, to: number) {
+    return new TextSpanRef(
+      this.docHandle,
+      this.path,
+      this.from + from,
+      this.from + to
+    );
+  }
+
   change(fn: (obj: string) => void): void {
     throw new Error("not implemented");
   }

@@ -29,7 +29,7 @@ const PATH = ["content"];
 
 export const MarkdownEditor = ({ docUrl }: ToolProps) => {
   const repo = useRepo();
-  const [doc] = useDocument(docUrl);
+  const [doc] = useDocument<MarkdownDoc>(docUrl);
   const handle = useDocHandle<MarkdownDoc>(docUrl);
   const { isSelected, setSelection } = useSelection();
   const context = useSharedContext();
@@ -68,7 +68,8 @@ export const MarkdownEditor = ({ docUrl }: ToolProps) => {
     };
   }, [repo, handle, doc]);
 
-  //  add links to context
+  //  add links and content to context
+  const content = doc?.content as string;
   useEffect(
     () =>
       context.change((context) => {
@@ -80,8 +81,12 @@ export const MarkdownEditor = ({ docUrl }: ToolProps) => {
             })
           );
         });
+
+        if (content && handle) {
+          context.add(new PathRef(handle, ["content"]));
+        }
       }),
-    [linkedDocs]
+    [linkedDocs, handle]
   );
 
   useDerivedSharedContext((context) => {

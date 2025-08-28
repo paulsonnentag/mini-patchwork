@@ -1,130 +1,43 @@
-import {
-  AutomergeUrl,
-  ChangeFn,
-  isValidAutomergeUrl,
-} from "@automerge/automerge-repo";
+import { AutomergeUrl, isValidAutomergeUrl } from "@automerge/automerge-repo";
 import { useDocument, useRepo } from "@automerge/automerge-repo-react-hooks";
 import { useEffect, useState } from "react";
-import { DataTypeTemplate, PatchworkDoc } from "../../sdk/types";
-import { DATA_TYPE_TEMPLATES, getDataType } from "../datatypes";
-import { getCompatibleTools, getEditor, useSelectedTool } from "../tools";
-import { Branched } from "./Branched";
-import { startTransition } from "react";
-
-type AccountDoc = {
-  documents: AutomergeUrl[];
-};
+import { PatchworkDoc } from "../../sdk/types";
+import { MAIN_TOOLS, useSelectedTool } from "../tools";
+import { BranchedEditor } from "./BranchedEditor";
+import { DocListSidebar } from "./DocListSidebar";
+import { ToolPickerBar } from "./ToolPickerBar";
 
 export const Frame = () => {
-  const repo = useRepo();
   const [selectedDocUrl, setSelectedDocUrl] = useDocUrl();
-  const [doc, changeDoc] = useDocument<PatchworkDoc>(selectedDocUrl);
-  const [accountDoc, changeAccountDoc] = useAccountDoc();
-  const [selectedTool, setSelectedToolId] = useSelectedTool(selectedDocUrl);
-  const selectedDataType = doc ? doc["@patchwork"]?.type : undefined;
-  const tools = selectedDataType ? getCompatibleTools(selectedDataType) : [];
-
-  const addNewDocument = (template: DataTypeTemplate) => {
-    const docHandle = repo.create<PatchworkDoc>();
-    docHandle.change((doc) => {
-      doc["@patchwork"] = {
-        type: template.dataType,
-      };
-      template.init(doc, repo);
-    });
-
-    changeAccountDoc((doc) => {
-      doc.documents.push(docHandle.url);
-    });
-
-    setSelectedDocUrl(docHandle.url);
-  };
-
-  if (!accountDoc) {
-    return <div>Loading...</div>;
-  }
+  const {
+    selectedTool: selectedMainTool,
+    setSelectedTool: setSelectedMainTool,
+    tools: mainTools,
+  } = useSelectedTool(MAIN_TOOLS, selectedDocUrl);
 
   return (
     <div className="h-screen w-screen flex">
-      <div className="w-[200px] flex-shrink-0 flex flex-col gap-2 bg-gray-100 p-2">
-        <div className="text-gray-500">Mini Patchwork</div>
-
-        <div className="border-b border-gray-300"></div>
-        {DATA_TYPE_TEMPLATES.map((template, index) => (
-          <button
-            className="text-left"
-            key={index}
-            onClick={() => addNewDocument(template)}
-          >
-            + {template.name}
-          </button>
-        ))}
-        <div className="border-b border-gray-300"></div>
-
-        {accountDoc.documents.map((docUrl) => (
-          <DocumentLink
-            key={docUrl}
-            docUrl={docUrl}
-            onSelect={() => {
-              setSelectedDocUrl(docUrl);
-            }}
-            isSelected={docUrl === selectedDocUrl}
-          />
-        ))}
-      </div>
+      <DocListSidebar
+        selectedDocUrl={selectedDocUrl}
+        setSelectedDocUrl={setSelectedDocUrl}
+      />
 
       <div className="flex-1 flex flex-col">
-        <div className="flex h-[57px] items-center border-b border-gray-300 p-2">
-          <div className="w-full" />
-          <div className="flex gap-2">
-            {doc &&
-              tools.map((tool) => (
-                <button
-                  key={tool.id}
-                  className={`border ${
-                    selectedTool === tool
-                      ? "border-blue-500"
-                      : "border-gray-300"
-                  } rounded-md p-2`}
-                  onClick={() => setSelectedToolId(tool.id)}
-                >
-                  {tool.name}
-                </button>
-              ))}
-          </div>
-        </div>
-        {selectedTool && selectedDocUrl && (
-          <Branched
+        <ToolPickerBar
+          selectedTool={selectedMainTool}
+          setSelectedTool={setSelectedMainTool}
+          tools={mainTools}
+        />
+
+        {selectedMainTool && selectedDocUrl && (
+          <BranchedEditor
             docUrl={selectedDocUrl}
-            tool={selectedTool.editor}
+            tool={selectedMainTool.editor}
             key={selectedDocUrl}
           />
         )}
       </div>
     </div>
-  );
-};
-
-export const DocumentLink = ({
-  docUrl,
-  onSelect,
-  isSelected,
-}: {
-  docUrl: AutomergeUrl;
-  onSelect: () => void;
-  isSelected: boolean;
-}) => {
-  const [doc] = useDocument<PatchworkDoc>(docUrl);
-
-  const dataType = doc ? getDataType(doc?.["@pathwork"]?.type) : undefined;
-
-  return (
-    <button
-      className={`text-left ${isSelected ? "text-blue-500" : ""}`}
-      onClick={onSelect}
-    >
-      {dataType?.getTitle(doc) || "Unknown Document"}
-    </button>
   );
 };
 
@@ -166,31 +79,4 @@ export const useDocUrl = (): [
   };
 
   return [docUrl, setDocUrl];
-};
-
-export const useAccountDoc = (): [
-  accountDoc: AccountDoc | undefined,
-  changeAccountDoc: (fn: ChangeFn<AccountDoc>) => void
-] => {
-  const repo = useRepo();
-  const [accountDocUrl, setAccountDocUrl] = useState<AutomergeUrl | undefined>(
-    undefined
-  );
-  const [accountDoc, changeAccountDoc] = useDocument<AccountDoc>(accountDocUrl);
-
-  useEffect(() => {
-    const accountDocUrl = localStorage.getItem("patchwork:accountDocUrl");
-    if (accountDocUrl && isValidAutomergeUrl(accountDocUrl)) {
-      setAccountDocUrl(accountDocUrl);
-    } else {
-      const accountDocHandle = repo.create<AccountDoc>();
-      accountDocHandle.change((doc) => {
-        doc.documents = [];
-      });
-      setAccountDocUrl(accountDocHandle.url);
-      localStorage.setItem("patchwork:accountDocUrl", accountDocHandle.url);
-    }
-  }, []);
-
-  return [accountDoc, changeAccountDoc];
 };

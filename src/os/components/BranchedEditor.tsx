@@ -11,7 +11,7 @@ import { EditorProps } from "../../sdk/types";
 
 type BranchedProps = EditorProps & {
   docUrl: string;
-  tool: React.FC<EditorPropxs>;
+  tool: React.FC<EditorProps>;
 };
 
 type Branch = {
@@ -28,7 +28,7 @@ type DocWithBranchesMetadata = {
   branchesDocUrl: AutomergeUrl;
 };
 
-export const Branched = ({ docUrl, tool: Tool }: BranchedProps) => {
+export const BranchedEditor = ({ docUrl, tool: Tool }: BranchedProps) => {
   const repo = useRepo();
   const [selectedBranch, setSelectedBranch] = useState<Branch | null>(null);
   const checkedOutDocUrl = selectedBranch?.docUrl ?? docUrl;

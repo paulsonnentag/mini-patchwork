@@ -5,7 +5,8 @@ import { DataTypeTemplate, Tool } from "../../sdk/types";
 export const TodoTool: Tool = {
   id: "todo",
   name: "Todo",
-  supportsDatatypes: ["todo"],
+  supportsDocument: (doc) =>
+    doc && doc["@patchwork"] && doc["@patchwork"].type === "todo",
   editor: TodoEditor,
 };
 

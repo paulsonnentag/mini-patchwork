@@ -7,20 +7,26 @@ import { useDocument } from "@automerge/automerge-repo-react-hooks";
 import { useEffect, useState } from "react";
 import { PatchworkDoc } from "../sdk/types";
 
-export const TOOLS: Tool[] = [MarkdownTool, EmbarkTool, TodoTool];
+export const MAIN_TOOLS: Tool[] = [MarkdownTool, EmbarkTool, TodoTool];
 
-export const getEditor = (dataType: string) => {
-  const tool = TOOLS.find((tool) => tool.supportsDatatypes.includes(dataType));
-  return tool?.editor;
+export const SIDEBAR_TOOLS: Tool[] = [];
+
+export const getCompatibleMainTools = (doc: any) => {
+  MAIN_TOOLS.filter((tool) => tool.supportsDocument(doc));
 };
 
-export const getCompatibleTools = (dataType: string) => {
-  return TOOLS.filter((tool) => tool.supportsDatatypes.includes(dataType));
+export const getCompatibleSidebarTools = (doc: any) => {
+  SIDEBAR_TOOLS.filter((tool) => tool.supportsDocument(doc));
 };
 
 export const useSelectedTool = (
+  tools: Tool[],
   docUrl?: AutomergeUrl
-): [Tool | undefined, (toolId: string | undefined) => void] => {
+): {
+  selectedTool: Tool | undefined;
+  setSelectedTool: (tool: Tool) => void;
+  tools: Tool[];
+} => {
   const [doc] = useDocument<PatchworkDoc>(docUrl);
   const [selectedToolId, setSelectedToolId] = useState<string | undefined>(
     undefined
@@ -31,14 +37,22 @@ export const useSelectedTool = (
   }, [docUrl]);
 
   if (!doc) {
-    return [undefined, setSelectedToolId];
+    return {
+      selectedTool: undefined,
+      setSelectedTool: () => {},
+      tools: [],
+    };
   }
 
-  const type = doc["@patchwork"].type;
+  const supportedTools = tools.filter((tool) => tool.supportsDocument(doc));
 
   const selectedTool = selectedToolId
-    ? TOOLS.find((tool) => tool.id === selectedToolId)
-    : TOOLS.find((tool) => tool.supportsDatatypes.includes(type));
+    ? supportedTools.find((tool) => tool.id === selectedToolId)
+    : supportedTools[0];
 
-  return [selectedTool, setSelectedToolId];
+  return {
+    selectedTool,
+    setSelectedTool: (tool: Tool) => setSelectedToolId(tool.id),
+    tools: supportedTools,
+  };
 };

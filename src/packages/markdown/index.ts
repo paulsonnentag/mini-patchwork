@@ -42,6 +42,6 @@ export const MarkdownTemplate: DataTypeTemplate<MarkdownDoc> = {
 export const MarkdownTool: Tool = {
   id: "markdown",
   name: "Markdown",
-  supportsDatatypes: ["markdown"],
+  supportsDocument: (doc) => doc["@patchwork"].type === "markdown",
   editor: MarkdownEditor,
 };

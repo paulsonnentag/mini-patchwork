@@ -1,4 +1,4 @@
-import { AutomergeUrl, Repo } from "@automerge/automerge-repo";
+import { AutomergeUrl, Doc, Repo } from "@automerge/automerge-repo";
 
 export type DataType<Doc = unknown> = {
   id: string;
@@ -19,7 +19,7 @@ export type EditorProps = {
 export type Tool = {
   id: string;
   name: string;
-  supportsDatatypes: string[];
+  supportsDocument: (doc: any) => boolean;
   editor: React.FC<EditorProps>;
 };
 

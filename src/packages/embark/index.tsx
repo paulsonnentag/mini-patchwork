@@ -8,7 +8,7 @@ import { LocationDoc } from "./MapView";
 export const EmbarkTool: Tool = {
   id: "embark",
   name: "Embark",
-  supportsDatatypes: ["markdown"],
+  supportsDocument: (doc) => doc["@patchwork"].type === "markdown",
   editor: EmbarkEditor,
 };
 

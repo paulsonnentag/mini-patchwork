@@ -43,5 +43,5 @@ export const MarkdownTool: Tool = {
   id: "markdown",
   name: "Markdown",
   supportsDocument: (doc) => doc["@patchwork"].type === "markdown",
-  editor: MarkdownEditor,
+  component: MarkdownEditor,
 };

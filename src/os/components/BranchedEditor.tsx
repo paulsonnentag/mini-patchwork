@@ -7,11 +7,11 @@ import {
 } from "@automerge/automerge-repo-react-hooks";
 import { AutomergeUrl } from "@automerge/automerge-repo";
 import { useAddDiffOfDoc } from "../../sdk/context/diff";
-import { EditorProps } from "../../sdk/types";
+import { ToolProps } from "../../sdk/types";
 
-type BranchedProps = EditorProps & {
+type BranchedProps = ToolProps & {
   docUrl: string;
-  tool: React.FC<EditorProps>;
+  tool: React.FC<ToolProps>;
 };
 
 type Branch = {

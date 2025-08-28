@@ -1,15 +1,15 @@
 import { Tool } from "../sdk/types";
-import { EmbarkTool } from "../packages/embark";
 import { MarkdownTool } from "../packages/markdown";
 import { TodoTool } from "../packages/todo";
 import { AutomergeUrl } from "@automerge/automerge-repo";
 import { useDocument } from "@automerge/automerge-repo-react-hooks";
 import { useEffect, useState } from "react";
 import { PatchworkDoc } from "../sdk/types";
+import { MapTool } from "../packages/map";
 
-export const MAIN_TOOLS: Tool[] = [MarkdownTool, EmbarkTool, TodoTool];
+export const MAIN_TOOLS: Tool[] = [MarkdownTool, TodoTool];
 
-export const SIDEBAR_TOOLS: Tool[] = [];
+export const SIDEBAR_TOOLS: Tool[] = [MapTool];
 
 export const getCompatibleMainTools = (doc: any) => {
   MAIN_TOOLS.filter((tool) => tool.supportsDocument(doc));

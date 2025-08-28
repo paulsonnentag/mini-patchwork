@@ -6,7 +6,7 @@ import { useState } from "react";
 import { ObjRef, PathRef } from "../../sdk/context/core/objRefs";
 import { useGetDiff } from "../../sdk/context/diff";
 import { classNames } from "../../lib/classNames";
-import { EditorProps } from "../../sdk/types";
+import { ToolProps } from "../../sdk/types";
 
 type Todo = {
   id: string;
@@ -19,7 +19,7 @@ export type TodoDoc = {
   todos: Todo[];
 };
 
-export const TodoEditor = ({ docUrl }: EditorProps) => {
+export const TodoEditor = ({ docUrl }: ToolProps) => {
   const [doc, changeDoc] = useDocument<TodoDoc>(docUrl);
   const docHandle = useDocHandle<TodoDoc>(docUrl);
   const [text, setText] = useState("");

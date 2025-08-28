@@ -82,7 +82,7 @@ export const DocumentLink = ({
 }) => {
   const [doc] = useDocument<PatchworkDoc>(docUrl);
 
-  const dataType = doc ? getDataType(doc?.["@patchwork"]?.type) : undefined;
+  const dataType = doc ? getDataType(doc) : undefined;
 
   return (
     <button

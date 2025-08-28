@@ -2,15 +2,7 @@ import { Repo } from "@automerge/automerge-repo";
 import { DataTypeTemplate, Tool } from "../../sdk/types";
 import { outdent } from "../../lib/outdents";
 import { MarkdownDoc } from "../markdown/MarkdownEditor";
-import { EmbarkEditor } from "./EmbarkEditor";
-import { LocationDoc } from "./MapView";
-
-export const EmbarkTool: Tool = {
-  id: "embark",
-  name: "Embark",
-  supportsDocument: (doc) => doc["@patchwork"].type === "markdown",
-  editor: EmbarkEditor,
-};
+import { LocationDoc } from "../map/MapView";
 
 export const EmbarkTemplate: DataTypeTemplate<MarkdownDoc> = {
   dataType: "markdown",

@@ -12,7 +12,7 @@ export type DataTypeTemplate<Doc = unknown> = {
   init: (doc: Doc, repo: Repo) => void;
 };
 
-export type EditorProps = {
+export type ToolProps = {
   docUrl: AutomergeUrl;
 };
 
@@ -20,7 +20,7 @@ export type Tool = {
   id: string;
   name: string;
   supportsDocument: (doc: any) => boolean;
-  editor: React.FC<EditorProps>;
+  component: React.FC<ToolProps>;
 };
 
 export type PatchworkDoc = {

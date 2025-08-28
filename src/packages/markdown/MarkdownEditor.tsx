@@ -15,7 +15,7 @@ import {
   useRepo,
 } from "@automerge/automerge-repo-react-hooks";
 import { DocHandle, DocumentId, Repo } from "@automerge/automerge-repo";
-import { EditorProps } from "../../sdk/types";
+import { ToolProps } from "../../sdk/types";
 import { Codemirror } from "./lib/codemirror";
 import { DiffValue, useGetDiffsAt } from "../../sdk/context/diff";
 
@@ -27,7 +27,7 @@ const Link = defineField<{ target: ObjRef }>("Link");
 
 const PATH = ["content"];
 
-export const MarkdownEditor = ({ docUrl }: EditorProps) => {
+export const MarkdownEditor = ({ docUrl }: ToolProps) => {
   const repo = useRepo();
   const [doc] = useDocument(docUrl);
   const handle = useDocHandle<MarkdownDoc>(docUrl);

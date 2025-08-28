@@ -7,7 +7,7 @@ export const TodoTool: Tool = {
   name: "Todo",
   supportsDocument: (doc) =>
     doc && doc["@patchwork"] && doc["@patchwork"].type === "todo",
-  editor: TodoEditor,
+  component: TodoEditor,
 };
 
 export const TodoDataType = {

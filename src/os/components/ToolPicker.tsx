@@ -6,14 +6,13 @@ type ToolPickerProps = {
   setSelectedTool: (tool: Tool) => void;
 };
 
-export const ToolPickerBar = ({
+export const ToolPicker = ({
   tools,
   selectedTool,
   setSelectedTool,
 }: ToolPickerProps) => {
   return (
-    <div className="flex gap-2 p-2 border-b border-gray-200">
-      <div className="flex-1" />
+    <div className="flex gap-2">
       {tools.map((tool) => (
         <button
           key={tool.id}

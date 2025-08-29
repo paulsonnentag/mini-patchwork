@@ -203,14 +203,16 @@ export const MarkdownEditor = ({ docUrl }: ToolProps) => {
   );
 
   return (
-    <div className="w-full h-full">
-      <Codemirror
-        docUrl={docUrl}
-        path={PATH}
-        onChangeSelection={onChangeSelection}
-        decorations={decorations}
-        extensions={cmExtensions}
-      />
+    <div className="w-full h-full overflow-auto">
+      <div className="p-4">
+        <Codemirror
+          docUrl={docUrl}
+          path={PATH}
+          onChangeSelection={onChangeSelection}
+          decorations={decorations}
+          extensions={cmExtensions}
+        />
+      </div>
     </div>
   );
 };

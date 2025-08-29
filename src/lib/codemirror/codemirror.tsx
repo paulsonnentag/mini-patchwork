@@ -1,5 +1,6 @@
+import * as Automerge from "@automerge/automerge";
 import { automergeSyncPlugin } from "@automerge/automerge-codemirror";
-import { AutomergeUrl } from "@automerge/automerge-repo";
+import { AutomergeUrl, DocHandle } from "@automerge/automerge-repo";
 import { useDocHandle } from "@automerge/automerge-repo-react-hooks";
 import { Extension, StateEffect, StateField } from "@codemirror/state";
 import { Decoration, DecorationSet, EditorView } from "@codemirror/view";
@@ -9,7 +10,7 @@ import { lookup } from "../lookup";
 
 type CodemirrorProps = {
   docUrl: AutomergeUrl;
-  path: string[];
+  path: Automerge.Prop[];
   onChangeSelection: (from: number, to: number) => void;
   decorations: DecorationSet;
   extensions?: Extension[];
@@ -56,7 +57,7 @@ export const Codemirror = ({
       doc: initialDoc,
       extensions: [
         automergeSyncPlugin({
-          handle,
+          handle: handle as any, // todo: typescript is confused by different version of doc handle
           path,
         }),
         decorationsField,

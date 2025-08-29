@@ -3,7 +3,7 @@ import {
   useDocument,
 } from "@automerge/automerge-repo-react-hooks";
 import { PlusIcon, TrashIcon } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ObjRef, PathRef, TextSpanRef } from "../../sdk/context/core/objRefs";
 import { useSharedContext } from "../../sdk/context/core/sharedContext";
 import { ToolProps } from "../../sdk/types";
@@ -77,7 +77,7 @@ export const PotluckSearch = ({
   searchRef: ObjRef<PotluckSearch>;
   onDelete: () => void;
 }) => {
-  const { isSelected, setSelection } = useSelection();
+  const { setSelection } = useSelection();
   const context = useSharedContext();
 
   const onChangeSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -88,6 +88,9 @@ export const PotluckSearch = ({
 
   const [matches, setMatches] = useState<Match[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [isInputFocused, setIsInputFocused] = useState(false);
+  const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
+  const lastAppliedSelectionKeysRef = useRef<string[]>([]);
 
   useEffect(() => {
     const pattern = searchRef.value.pattern;
@@ -109,7 +112,7 @@ export const PotluckSearch = ({
         return;
       }
 
-      const matches = context.getAllObjRefs().flatMap((objRef) =>
+      const nextMatches = context.getAllObjRefs().flatMap((objRef) =>
         findMatches(objRef, regExp).filter((m) => {
           if (matchKeys.has(m.textSpan.toKey())) {
             return false;
@@ -119,7 +122,7 @@ export const PotluckSearch = ({
         })
       );
 
-      setMatches(matches);
+      setMatches(nextMatches);
       setError(null);
     };
 
@@ -132,6 +135,34 @@ export const PotluckSearch = ({
     };
   }, [searchRef.value.pattern]);
 
+  // Single selection sync effect based on focus/hover state
+  useEffect(() => {
+    let desired = [] as TextSpanRef[];
+    if (hoveredIndex !== null && matches[hoveredIndex]) {
+      desired = [matches[hoveredIndex].textSpan];
+    } else if (isInputFocused) {
+      desired = matches.map((m) => m.textSpan);
+    }
+
+    const desiredKeys = desired.map((r) => r.toKey()).sort();
+    const currentKeys = lastAppliedSelectionKeysRef.current;
+    const sameLength = currentKeys.length === desiredKeys.length;
+    let equal = sameLength;
+    if (sameLength) {
+      for (let i = 0; i < currentKeys.length; i++) {
+        if (currentKeys[i] !== desiredKeys[i]) {
+          equal = false;
+          break;
+        }
+      }
+    }
+
+    if (!equal) {
+      lastAppliedSelectionKeysRef.current = desiredKeys;
+      setSelection(desired);
+    }
+  }, [isInputFocused, hoveredIndex, matches, setSelection]);
+
   return (
     <div className="flex flex-col border border-gray-300 rounded-md bg-white">
       <div className="flex">
@@ -140,6 +171,8 @@ export const PotluckSearch = ({
           className="font-mono text-gray-500 p-2 flex-1 outline-none"
           value={searchRef.value.pattern}
           onChange={onChangeSearch}
+          onFocus={() => setIsInputFocused(true)}
+          onBlur={() => setIsInputFocused(false)}
         />
         <button className="p-2 hover:bg-gray-200" onClick={onDelete}>
           <TrashIcon className="text-gray-500" />
@@ -185,10 +218,10 @@ export const PotluckSearch = ({
                     key={index}
                     className="align-top hover:bg-gray-50 cursor-pointer"
                     onMouseEnter={() => {
-                      setSelection([match.textSpan]);
+                      setHoveredIndex(index);
                     }}
                     onMouseLeave={() => {
-                      setSelection([]);
+                      setHoveredIndex(null);
                     }}
                   >
                     <td className="p-2 border-b border-gray-100">

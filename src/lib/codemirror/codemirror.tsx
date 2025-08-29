@@ -1,18 +1,18 @@
 import { automergeSyncPlugin } from "@automerge/automerge-codemirror";
 import { AutomergeUrl } from "@automerge/automerge-repo";
 import { useDocHandle } from "@automerge/automerge-repo-react-hooks";
-import { StateEffect, StateField } from "@codemirror/state";
+import { Extension, StateEffect, StateField } from "@codemirror/state";
 import { Decoration, DecorationSet, EditorView } from "@codemirror/view";
-import { basicSetup } from "codemirror";
 import { useEffect, useRef, useState } from "react";
 import "./codemirror.css";
-import { lookup } from "../../../lib/lookup";
+import { lookup } from "../lookup";
 
 type CodemirrorProps = {
   docUrl: AutomergeUrl;
   path: string[];
   onChangeSelection: (from: number, to: number) => void;
   decorations: DecorationSet;
+  extensions?: Extension[];
 };
 
 export const Codemirror = ({
@@ -20,6 +20,7 @@ export const Codemirror = ({
   path,
   onChangeSelection,
   decorations,
+  extensions,
 }: CodemirrorProps) => {
   const [container, setContainer] = useState<HTMLDivElement | null>(null);
 
@@ -54,7 +55,6 @@ export const Codemirror = ({
     const view = new EditorView({
       doc: initialDoc,
       extensions: [
-        basicSetup,
         automergeSyncPlugin({
           handle,
           path,
@@ -66,6 +66,7 @@ export const Codemirror = ({
             onChangeSelection(sel.from, sel.to);
           }
         }),
+        ...(extensions ?? []),
       ],
       parent: container,
     });

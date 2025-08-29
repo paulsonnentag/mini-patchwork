@@ -1,5 +1,22 @@
 import { RangeSet } from "@codemirror/state";
-import { Decoration, DecorationSet, WidgetType } from "@codemirror/view";
+import {
+  Decoration,
+  DecorationSet,
+  EditorView,
+  WidgetType,
+  keymap,
+} from "@codemirror/view";
+import { markdown } from "@codemirror/lang-markdown";
+import { languages } from "@codemirror/language-data";
+import { completionKeymap } from "@codemirror/autocomplete";
+import {
+  defaultKeymap,
+  history,
+  historyKeymap,
+  indentWithTab,
+} from "@codemirror/commands";
+import { foldKeymap, indentOnInput, indentUnit } from "@codemirror/language";
+import { searchKeymap } from "@codemirror/search";
 import { useContext, useEffect, useMemo, useState } from "react";
 import { defineField } from "../../sdk/context/core/fields";
 import { ObjRef, PathRef, TextSpanRef } from "../../sdk/context/core/objRefs";
@@ -16,8 +33,9 @@ import {
 } from "@automerge/automerge-repo-react-hooks";
 import { DocHandle, DocumentId, Repo } from "@automerge/automerge-repo";
 import { ToolProps } from "../../sdk/types";
-import { Codemirror } from "./lib/codemirror";
+import { Codemirror } from "../../lib/codemirror";
 import { DiffValue, useGetDiffsAt } from "../../sdk/context/diff";
+import { theme } from "./theme";
 
 export type MarkdownDoc = {
   content: string;
@@ -162,6 +180,28 @@ export const MarkdownEditor = ({ docUrl }: ToolProps) => {
     setSelection(selectedObjects);
   });
 
+  const cmExtensions = useMemo(
+    () => [
+      ...theme("sans"),
+      history(),
+      indentOnInput(),
+      keymap.of([
+        ...defaultKeymap,
+        ...searchKeymap,
+        ...historyKeymap,
+        ...foldKeymap,
+        ...completionKeymap,
+        indentWithTab,
+      ]),
+      EditorView.lineWrapping,
+      markdown({
+        codeLanguages: languages,
+      }),
+      indentUnit.of("    "),
+    ],
+    []
+  );
+
   return (
     <div className="w-full h-full">
       <Codemirror
@@ -169,6 +209,7 @@ export const MarkdownEditor = ({ docUrl }: ToolProps) => {
         path={PATH}
         onChangeSelection={onChangeSelection}
         decorations={decorations}
+        extensions={cmExtensions}
       />
     </div>
   );

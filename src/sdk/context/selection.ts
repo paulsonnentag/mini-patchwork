@@ -39,5 +39,5 @@ export const useSelection = () => {
     [selectedObjRefs]
   );
 
-  return { isSelected, setSelection };
+  return { isSelected, setSelection, selectedObjRefs };
 };

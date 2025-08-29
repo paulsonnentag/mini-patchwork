@@ -7,6 +7,7 @@ import { useEffect, useState } from "react";
 import { ObjRef, PathRef, TextSpanRef } from "../../sdk/context/core/objRefs";
 import { useSharedContext } from "../../sdk/context/core/sharedContext";
 import { ToolProps } from "../../sdk/types";
+import { useSelection } from "../../sdk/context/selection";
 
 type PotluckSearch = {
   pattern: string;
@@ -76,6 +77,7 @@ export const PotluckSearch = ({
   searchRef: ObjRef<PotluckSearch>;
   onDelete: () => void;
 }) => {
+  const { isSelected, setSelection } = useSelection();
   const context = useSharedContext();
 
   const onChangeSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -90,9 +92,9 @@ export const PotluckSearch = ({
   useEffect(() => {
     const pattern = searchRef.value.pattern;
 
-    const matchKeys = new Set<string>();
-
     const onChange = () => {
+      const matchKeys = new Set<string>();
+
       if (pattern === "") {
         setMatches([]);
         return;
@@ -179,7 +181,16 @@ export const PotluckSearch = ({
               </thead>
               <tbody>
                 {matches.map((match, index) => (
-                  <tr key={index} className="align-top">
+                  <tr
+                    key={index}
+                    className="align-top hover:bg-gray-50 cursor-pointer"
+                    onMouseEnter={() => {
+                      setSelection([match.textSpan]);
+                    }}
+                    onMouseLeave={() => {
+                      setSelection([]);
+                    }}
+                  >
                     <td className="p-2 border-b border-gray-100">
                       <div className="inline-block bg-white border border-gray-200 rounded shadow-sm px-1 max-w-[28rem] whitespace-pre-wrap break-words">
                         <span className="font-mono text-sm text-gray-800">

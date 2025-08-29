@@ -31,20 +31,20 @@ export const MarkdownEditor = ({ docUrl }: ToolProps) => {
   const repo = useRepo();
   const [doc] = useDocument<MarkdownDoc>(docUrl);
   const handle = useDocHandle<MarkdownDoc>(docUrl);
-  const { isSelected, setSelection } = useSelection();
+  const { isSelected, setSelection, selectedObjRefs } = useSelection();
   const context = useSharedContext();
   const getDiffsAt = useGetDiffsAt();
 
   // todo:  another weird doc handle issue
 
-  const contentRef =
-    handle && (handle.doc() as any)["@patchwork"]?.type === "markdown"
-      ? new PathRef(handle, ["content"])
-      : undefined;
+  const contentRef = useMemo(() => {
+    if (!handle || (handle.doc() as any)["@patchwork"]?.type !== "markdown") {
+      return undefined;
+    }
+    return new PathRef(handle, ["content"]);
+  }, [handle]);
 
   const contentDiffs = getDiffsAt(contentRef);
-
-  console.log("diffs", contentDiffs, contentRef, handle.doc());
 
   // parse links
   const [linkedDocs, setLinkedDocs] = useState<LinkedDocs[]>([]);
@@ -89,17 +89,8 @@ export const MarkdownEditor = ({ docUrl }: ToolProps) => {
     [linkedDocs, handle]
   );
 
-  useDerivedSharedContext((context) => {
-    console.log("CONTEXT ====");
-
-    for (const entry of context.dump()) {
-      console.log(entry);
-    }
-  });
-
   // compute decorations
   const decorations = useMemo<DecorationSet>(() => {
-    console.log("recompute decorations");
     return RangeSet.of<Decoration>(
       [
         // links
@@ -134,10 +125,26 @@ export const MarkdownEditor = ({ docUrl }: ToolProps) => {
 
           return [];
         }),
+
+        // selection
+        ...selectedObjRefs.flatMap((selectedObjRef) => {
+          if (
+            !(selectedObjRef instanceof TextSpanRef) ||
+            !contentRef ||
+            !selectedObjRef.isPartOf(contentRef) ||
+            selectedObjRef.from === selectedObjRef.to
+          ) {
+            return [];
+          }
+
+          return Decoration.mark({
+            class: "bg-blue-200",
+          }).range(selectedObjRef.from, selectedObjRef.to);
+        }),
       ],
       true // sort ranges
     );
-  }, [linkedDocs, isSelected, contentDiffs]);
+  }, [linkedDocs, isSelected, contentDiffs, selectedObjRefs]);
 
   const onChangeSelection = useStaticCallback((from: number, to: number) => {
     if (!handle) {

@@ -2,7 +2,15 @@ import {
   useDocHandle,
   useDocument,
 } from "@automerge/automerge-repo-react-hooks";
-import { PlusIcon, TrashIcon, ChevronRight, ChevronDown } from "lucide-react";
+import {
+  PlusIcon,
+  TrashIcon,
+  ChevronRight,
+  ChevronDown,
+  Eye,
+  EyeOff,
+} from "lucide-react";
+import { ArrowLeft, ArrowLeftRight, ArrowRight } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ObjRef, PathRef, TextSpanRef } from "../../sdk/context/core/objRefs";
 import { useSharedContext } from "../../sdk/context/core/sharedContext";
@@ -14,11 +22,19 @@ import { Decoration, EditorView } from "@codemirror/view";
 import { AutomergeUrl } from "@automerge/automerge-repo";
 import * as Automerge from "@automerge/automerge";
 import { outdent } from "../../lib/outdents";
+import { Extension } from "../../sdk/context/extensions";
+import { deepEqual } from "../../lib/deepEqual";
+
+type DisplayMode = "hide" | "replace" | "after" | "before";
 
 type PotluckSearch = {
   pattern: string;
   extension?: string;
+  // Per computed field display preference keyed by field name
+  displayModes?: Record<string, DisplayMode>;
 };
+
+// Using shared `Extension` field; slot carries display mode and value carries text
 
 export type DocWithPotluckSearches = {
   potluckSearches: PotluckSearch[];
@@ -41,6 +57,7 @@ export const PotluckEditor = ({ docUrl }: ToolProps) => {
             
           }
         `,
+        displayModes: {},
       });
     });
   };
@@ -104,6 +121,7 @@ export const PotluckSearch = ({
   const [computedValues, setComputedValues] = useState<
     Array<Record<string, string>>
   >([]);
+  const displayModes = searchRef.value.displayModes ?? {};
 
   const onChangeSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
     searchRef.change((search) => {
@@ -147,7 +165,11 @@ export const PotluckSearch = ({
         })
       );
 
-      setMatches(nextMatches);
+      setMatches((matches) => {
+        console.log("matches changed", matches, nextMatches);
+        return deepEqual(matches, nextMatches) ? matches : nextMatches;
+      });
+
       setError(null);
     };
 
@@ -243,6 +265,27 @@ export const PotluckSearch = ({
     }
   }, [matches, searchRef.value.extension]);
 
+  // Attach matches and computed fields to the shared context as fields.
+  // Use a stable fingerprint to avoid re-applying identical overlays repeatedly.
+  // Also retract previous overlay on cleanup to avoid accumulation.
+  useEffect(() => {
+    const retract = context.change((ctx) => {
+      matches.forEach((m, idx) => {
+        const computed = computedValues?.[idx] ?? {};
+        ctx.add(m.textSpan);
+        Object.entries(computed).forEach(([name, value]) => {
+          const mode: DisplayMode = displayModes[name] ?? "after";
+          ctx
+            .add(m.textSpan)
+            .with(Extension({ slot: mode, value: value ?? "" }));
+        });
+      });
+    });
+    return () => {
+      retract();
+    };
+  }, [context, matches, computedValues, displayModes]);
+
   return (
     <div className="flex items-start gap-1">
       <button
@@ -282,7 +325,7 @@ export const PotluckSearch = ({
               />
             </div>
             <button className="p-2 hover:bg-gray-200" onClick={onDelete}>
-              <TrashIcon className="text-gray-500" />
+              <TrashIcon className="text-gray-500" size={20} />
             </button>
           </div>
 
@@ -339,78 +382,92 @@ export const PotluckSearch = ({
 
             return (
               <div className="border-t border-gray-300">
-                <div className="overflow-auto">
-                  <table className="table-auto w-full border-collapse">
-                    <thead>
-                      <tr className="bg-gray-50">
-                        <th className="text-left p-2 border-b border-gray-200 w-1/3">
-                          match
+                <table className="table-auto w-full border-collapse">
+                  <thead>
+                    <tr className="bg-gray-50">
+                      <th className="text-left p-2 border-b border-gray-200 w-1/3">
+                        match
+                      </th>
+                      {groupKeys.map((key) => (
+                        <th
+                          key={key}
+                          className="text-left p-2 border-b border-gray-200"
+                        >
+                          {key}
                         </th>
-                        {groupKeys.map((key) => (
-                          <th
-                            key={key}
-                            className="text-left p-2 border-b border-gray-200"
-                          >
-                            {key}
-                          </th>
-                        ))}
-                        {computedKeys.map((key) => (
-                          <th
-                            key={`computed-${key}`}
-                            className="text-left p-2 border-b border-gray-200"
-                          >
-                            {key}
-                          </th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {matches.map((match, index) => {
-                        const computed = computedValues?.[index] ?? {};
-                        return (
-                          <tr
-                            key={index}
-                            className="align-top hover:bg-gray-50 cursor-pointer"
-                            onMouseEnter={() => {
-                              setHoveredIndex(index);
-                            }}
-                            onMouseLeave={() => {
-                              setHoveredIndex(null);
-                            }}
-                          >
-                            <td className="p-2 border-b border-gray-100">
-                              <div className="inline-block bg-white border border-gray-200 rounded shadow-sm px-1 max-w-[28rem] whitespace-pre-wrap break-words">
-                                <span className="font-mono text-sm text-gray-800">
-                                  {match.textSpan.value}
-                                </span>
-                              </div>
+                      ))}
+                      {computedKeys.map((key) => (
+                        <ComputedFieldHeader
+                          key={`computed-${key}`}
+                          fieldName={key}
+                          mode={displayModes[key] ?? "after"}
+                          onModeChange={(mode) => {
+                            searchRef.change((s) => {
+                              if (!(s as PotluckSearch).displayModes) {
+                                (s as PotluckSearch).displayModes =
+                                  {} as Record<string, DisplayMode>;
+                              }
+                              (s as PotluckSearch).displayModes![key] = mode;
+                            });
+                          }}
+                        />
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {matches.map((match, index) => {
+                      const computed = computedValues?.[index] ?? {};
+                      return (
+                        <tr
+                          key={index}
+                          className="align-top hover:bg-gray-50 cursor-pointer"
+                          onMouseEnter={() => {
+                            setHoveredIndex(index);
+                          }}
+                          onMouseLeave={() => {
+                            setHoveredIndex(null);
+                          }}
+                        >
+                          <td className="p-2 border-b border-gray-100">
+                            <div className="inline-block bg-white border border-gray-200 rounded shadow-sm px-1 max-w-[28rem] whitespace-pre-wrap break-words">
+                              <span className="font-mono text-sm text-gray-800">
+                                {match.textSpan.value}
+                              </span>
+                            </div>
+                          </td>
+                          {groupKeys.map((key) => (
+                            <td
+                              key={key}
+                              className="p-2 border-b border-gray-100"
+                            >
+                              <span className="font-mono text-xs text-gray-700">
+                                {match.groups?.[key] ?? ""}
+                              </span>
                             </td>
-                            {groupKeys.map((key) => (
-                              <td
-                                key={key}
-                                className="p-2 border-b border-gray-100"
-                              >
-                                <span className="font-mono text-xs text-gray-700">
-                                  {match.groups?.[key] ?? ""}
-                                </span>
-                              </td>
-                            ))}
-                            {computedKeys.map((key) => (
+                          ))}
+                          {computedKeys.map((key) => {
+                            const mode: DisplayMode =
+                              displayModes[key] ?? "after";
+                            const value = computed?.[key] ?? "";
+
+                            return (
                               <td
                                 key={`computed-${key}`}
                                 className="p-2 border-b border-gray-100"
                               >
-                                <span className="font-mono text-xs text-gray-700">
-                                  {computed?.[key] ?? ""}
+                                <span
+                                  className={`font-mono text-xs text-gray-800`}
+                                >
+                                  {value}
                                 </span>
                               </td>
-                            ))}
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
+                            );
+                          })}
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
               </div>
             );
           })()}
@@ -419,6 +476,109 @@ export const PotluckSearch = ({
     </div>
   );
 };
+
+function ComputedFieldHeader({
+  fieldName,
+  mode,
+  onModeChange,
+}: {
+  fieldName: string;
+  mode: DisplayMode;
+  onModeChange: (mode: DisplayMode) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLTableCellElement | null>(null);
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (!ref.current) return;
+      if (!ref.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  return (
+    <th
+      ref={ref}
+      className="text-left p-2 border-b border-gray-200 relative"
+      title={fieldName}
+    >
+      <div className="flex items-center gap-2">
+        <span className="text-gray-500">{fieldName}</span>
+        <button
+          className="p-1 rounded hover:bg-gray-100"
+          onClick={() => setOpen((o) => !o)}
+          aria-label="Toggle field display options"
+        >
+          {mode === "hide" ? (
+            <EyeOff className="w-4 h-4 text-gray-600" />
+          ) : (
+            <Eye className="w-4 h-4 text-gray-800" />
+          )}
+        </button>
+      </div>
+      {open && (
+        <FieldDisplayPopup
+          mode={mode}
+          onSelect={(next) => {
+            onModeChange(next);
+            setOpen(false);
+          }}
+        />
+      )}
+    </th>
+  );
+}
+
+function FieldDisplayPopup({
+  mode,
+  onSelect,
+}: {
+  mode: DisplayMode;
+  onSelect: (mode: DisplayMode) => void;
+}) {
+  const options: Array<{ key: DisplayMode; label: string; hint?: string }> = [
+    { key: "hide", label: "Hidden" },
+    { key: "replace", label: "Replace" },
+    { key: "after", label: "After" },
+    { key: "before", label: "Before" },
+  ];
+
+  return (
+    <div className="absolute z-50 mt-1 right-2 top-full bg-white border border-gray-200 rounded shadow">
+      <ul className="min-w-[220px] py-1">
+        {options.map((opt) => {
+          const Icon =
+            opt.key === "hide"
+              ? EyeOff
+              : opt.key === "replace"
+              ? ArrowLeftRight
+              : opt.key === "after"
+              ? ArrowRight
+              : ArrowLeft;
+          return (
+            <li key={opt.key}>
+              <button
+                className={`w-full text-left px-3 py-2 hover:bg-gray-50 ${
+                  mode === opt.key ? "bg-gray-100" : ""
+                }`}
+                onClick={() => onSelect(opt.key)}
+              >
+                <div className="flex items-center gap-2">
+                  <Icon className="w-4 h-4 text-gray-700" />
+                  <span className="text-sm text-gray-800">{opt.label}</span>
+                </div>
+              </button>
+            </li>
+          );
+        })}
+      </ul>
+    </div>
+  );
+}
 
 type Match = {
   groups: Record<string, string>;

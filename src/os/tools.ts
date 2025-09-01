@@ -7,10 +7,11 @@ import { useEffect, useState } from "react";
 import { PatchworkDoc } from "../sdk/types";
 import { MapTool } from "../packages/map";
 import { PotluckTool } from "../packages/potluck";
+import { ContextViewerTool } from "../packages/context-viewer";
 
 export const MAIN_TOOLS: Tool[] = [MarkdownTool, TodoTool];
 
-export const SIDEBAR_TOOLS: Tool[] = [MapTool, PotluckTool];
+export const SIDEBAR_TOOLS: Tool[] = [MapTool, PotluckTool, ContextViewerTool];
 
 export const getCompatibleMainTools = (doc: any) => {
   MAIN_TOOLS.filter((tool) => tool.supportsDocument(doc));

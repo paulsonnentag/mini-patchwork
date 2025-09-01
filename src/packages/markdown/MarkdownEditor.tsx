@@ -35,6 +35,7 @@ import { DocHandle, DocumentId, Repo } from "@automerge/automerge-repo";
 import { ToolProps } from "../../sdk/types";
 import { Codemirror } from "../../lib/codemirror";
 import { DiffValue, useGetDiffsAt } from "../../sdk/context/diff";
+import { useExtensionsAt } from "../../sdk/context/extensions";
 import { theme } from "./theme";
 
 export type MarkdownDoc = {
@@ -52,6 +53,7 @@ export const MarkdownEditor = ({ docUrl }: ToolProps) => {
   const { isSelected, setSelection, selectedObjRefs } = useSelection();
   const context = useSharedContext();
   const getDiffsAt = useGetDiffsAt();
+  const getExtensionsAt = useExtensionsAt();
 
   // todo:  another weird doc handle issue
 
@@ -144,6 +146,40 @@ export const MarkdownEditor = ({ docUrl }: ToolProps) => {
           return [];
         }),
 
+        // extensions as widgets (before | after | replace)
+        ...getExtensionsAt(contentRef).flatMap((annotation) => {
+          const { field } = annotation;
+          const slot = (field.slot || "").toLowerCase();
+          if (!(annotation.objRef instanceof TextSpanRef)) return [];
+
+          const from = annotation.objRef.from;
+          const to = annotation.objRef.to;
+
+          if (slot === "before") {
+            return makeSlipDecoration({ text: field.value, side: -1 }).range(
+              from,
+              from
+            );
+          }
+          if (slot === "after") {
+            return makeSlipDecoration({ text: field.value, side: 1 }).range(
+              to,
+              to
+            );
+          }
+          if (slot === "replace") {
+            return Decoration.replace({
+              widget: new SlipWidget(field.value),
+              inclusive: true,
+            }).range(from, to);
+          }
+          // default: render after
+          return makeSlipDecoration({ text: field.value, side: 1 }).range(
+            to,
+            to
+          );
+        }),
+
         // selection
         ...selectedObjRefs.flatMap((selectedObjRef) => {
           if (
@@ -162,7 +198,14 @@ export const MarkdownEditor = ({ docUrl }: ToolProps) => {
       ],
       true // sort ranges
     );
-  }, [linkedDocs, isSelected, contentDiffs, selectedObjRefs]);
+  }, [
+    linkedDocs,
+    isSelected,
+    contentDiffs,
+    selectedObjRefs,
+    getExtensionsAt,
+    contentRef,
+  ]);
 
   const onChangeSelection = useStaticCallback((from: number, to: number) => {
     if (!handle) {
@@ -321,4 +364,45 @@ const makeDeleteDecoration = ({
   Decoration.widget({
     widget: new DeletionMarker(deletedText, isActive),
     side: 1,
+  });
+
+class SlipWidget extends WidgetType {
+  text: string;
+
+  constructor(text: string) {
+    super();
+    this.text = text;
+  }
+
+  toDOM(): HTMLElement {
+    const box = document.createElement("span");
+    box.style.display = "inline-block";
+    box.style.boxSizing = "border-box";
+    box.style.padding = "2px 6px";
+    box.style.margin = "0 4px";
+    box.style.fontSize = "0.85em";
+    box.style.backgroundColor = "#fffdf5"; // slip of paper feel
+    box.style.border = "1px solid #f1e9c6";
+    box.style.boxShadow = "0 1px 2px rgba(0,0,0,0.06)";
+    box.style.borderRadius = "4px";
+    box.style.color = "#3c3c3c";
+    box.style.fontFamily =
+      "ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto";
+    box.textContent = this.text;
+    return box;
+  }
+
+  eq(other: SlipWidget) {
+    return other.text === this.text;
+  }
+
+  ignoreEvent() {
+    return true;
+  }
+}
+
+const makeSlipDecoration = ({ text, side }: { text: string; side: -1 | 1 }) =>
+  Decoration.widget({
+    widget: new SlipWidget(text),
+    side,
   });

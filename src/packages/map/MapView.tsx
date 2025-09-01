@@ -34,8 +34,8 @@ export const MapView = () => {
         lat: objRef.value.lat,
         lng: objRef.value.lng,
         color: isSelected(objRef)
-          ? "oklch(0.637 0.237 25.331)"
-          : "oklch(0.704 0.191 22.216)",
+          ? "oklch(0.637 0.5 25.331)" // More saturated and lighter
+          : "oklch(0.704 0.1 22.216)", // Less saturated and darker
         data: { objRef },
       })),
     [objRefsWithLatLng, isSelected]

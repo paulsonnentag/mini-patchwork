@@ -1,9 +1,14 @@
 import * as Automerge from "@automerge/automerge";
 import { automergeSyncPlugin } from "@automerge/automerge-codemirror";
-import { AutomergeUrl, DocHandle } from "@automerge/automerge-repo";
+import { AutomergeUrl } from "@automerge/automerge-repo";
 import { useDocHandle } from "@automerge/automerge-repo-react-hooks";
 import { Extension, StateEffect, StateField } from "@codemirror/state";
-import { Decoration, DecorationSet, EditorView } from "@codemirror/view";
+import {
+  Decoration,
+  DecorationSet,
+  EditorView,
+  ViewUpdate,
+} from "@codemirror/view";
 import { useEffect, useRef, useState } from "react";
 import "./codemirror.css";
 import { lookup } from "../lookup";
@@ -14,6 +19,8 @@ type CodemirrorProps = {
   onChangeSelection: (from: number, to: number) => void;
   decorations: DecorationSet;
   extensions?: Extension[];
+  // Expose the underlying EditorView so consumers can compute coords, etc.
+  viewRef?: (view: EditorView | null) => void;
 };
 
 export const Codemirror = ({
@@ -22,6 +29,7 @@ export const Codemirror = ({
   onChangeSelection,
   decorations,
   extensions,
+  viewRef: setViewReady,
 }: CodemirrorProps) => {
   const [container, setContainer] = useState<HTMLDivElement | null>(null);
 
@@ -62,6 +70,7 @@ export const Codemirror = ({
         }),
         decorationsField,
         EditorView.updateListener.of((update) => {
+          // Bubble all updates to consumers (doc changes, viewport, scroll, etc.)
           if (update.selectionSet) {
             const sel = update.state.selection.main;
             onChangeSelection(sel.from, sel.to);
@@ -73,22 +82,29 @@ export const Codemirror = ({
     });
 
     setView(view);
-    // Seed initial decorations
-    view.dispatch({ effects: setDecorations.of(decorations) });
+    if (setViewReady) setViewReady(view);
 
     return () => {
       setView(null);
+      if (setViewReady) setViewReady(null);
       view.destroy();
     };
-  }, [container, path, handle]);
+  }, [
+    container,
+    handle,
+    path,
+    decorationsField,
+    setDecorations,
+    extensions,
+    onChangeSelection,
+    setViewReady,
+  ]);
 
   // Update decorations when the DecorationSet prop changes, without remounting
   useEffect(() => {
     if (!view) return;
-    view.dispatch({
-      effects: setDecorations.of(decorations),
-    });
-  }, [decorations]);
+    view.dispatch({ effects: setDecorations.of(decorations) });
+  }, [decorations, setDecorations, view]);
 
   return <div ref={setContainer} className="w-full h-full" />;
 };

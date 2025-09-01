@@ -17,13 +17,10 @@ import {
 } from "@codemirror/commands";
 import { foldKeymap, indentOnInput, indentUnit } from "@codemirror/language";
 import { searchKeymap } from "@codemirror/search";
-import { useContext, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { defineField } from "../../sdk/context/core/fields";
 import { ObjRef, PathRef, TextSpanRef } from "../../sdk/context/core/objRefs";
-import {
-  useDerivedSharedContext,
-  useSharedContext,
-} from "../../sdk/context/core/sharedContext";
+import { useSharedContext } from "../../sdk/context/core/sharedContext";
 import { useSelection } from "../../sdk/context/selection";
 import { useStaticCallback } from "../../lib/useStaticCalback";
 import {
@@ -37,6 +34,7 @@ import { Codemirror } from "../../lib/codemirror";
 import { DiffValue, useGetDiffsAt } from "../../sdk/context/diff";
 import { useExtensionsAt } from "../../sdk/context/extensions";
 import { theme } from "./theme";
+import { MessageCircle } from "lucide-react";
 
 export type MarkdownDoc = {
   content: string;
@@ -54,6 +52,10 @@ export const MarkdownEditor = ({ docUrl }: ToolProps) => {
   const context = useSharedContext();
   const getDiffsAt = useGetDiffsAt();
   const getExtensionsAt = useExtensionsAt();
+  const cmContainerRef = useRef<HTMLDivElement | null>(null);
+  const [cmView, setCmView] = useState<EditorView | null>(null);
+  const selectionRangeRef = useRef<{ from: number; to: number } | null>(null);
+  const [commentBtnTop, setCommentBtnTop] = useState<number | null>(null);
 
   // todo:  another weird doc handle issue
 
@@ -106,7 +108,7 @@ export const MarkdownEditor = ({ docUrl }: ToolProps) => {
           context.add(new PathRef(handle, ["content"]));
         }
       }),
-    [linkedDocs, handle]
+    [linkedDocs, handle, content, context]
   );
 
   // compute decorations
@@ -221,7 +223,50 @@ export const MarkdownEditor = ({ docUrl }: ToolProps) => {
       ...overlappingLinks.map((linkedDoc) => linkedDoc.docRef),
     ];
     setSelection(selectedObjects);
+
+    // Track current selection range for comment button rendering
+    selectionRangeRef.current = { from, to };
+    recomputeCommentButtonPosition();
   });
+
+  // Recompute comment button position using current selection and cmView
+  const recomputeCommentButtonPosition = useStaticCallback(() => {
+    if (!cmView || !cmContainerRef.current) {
+      setCommentBtnTop(null);
+      return;
+    }
+    const range = selectionRangeRef.current;
+    if (!range || range.from === range.to) {
+      setCommentBtnTop(null);
+      return;
+    }
+
+    const coords = cmView.coordsAtPos(range.from);
+    if (!coords) {
+      setCommentBtnTop(null);
+      return;
+    }
+    const containerRect = cmContainerRef.current.getBoundingClientRect();
+    const top = coords.top - containerRect.top;
+    setCommentBtnTop(top);
+  });
+
+  // Recompute on window resize
+  useEffect(() => {
+    const onResize = () => recomputeCommentButtonPosition();
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, [recomputeCommentButtonPosition]);
+
+  // Recompute when view becomes available
+  useEffect(() => {
+    recomputeCommentButtonPosition();
+  }, [cmView, recomputeCommentButtonPosition]);
+
+  // Recompute when doc hanges
+  useEffect(() => {
+    recomputeCommentButtonPosition();
+  }, [doc?.content, recomputeCommentButtonPosition]);
 
   const cmExtensions = useMemo(
     () => [
@@ -248,13 +293,30 @@ export const MarkdownEditor = ({ docUrl }: ToolProps) => {
   return (
     <div className="w-full h-full overflow-auto">
       <div className="p-4">
-        <Codemirror
-          docUrl={docUrl}
-          path={PATH}
-          onChangeSelection={onChangeSelection}
-          decorations={decorations}
-          extensions={cmExtensions}
-        />
+        <div className="flex">
+          <div ref={cmContainerRef} className="relative flex-1">
+            <Codemirror
+              docUrl={docUrl}
+              path={PATH}
+              onChangeSelection={onChangeSelection}
+              decorations={decorations}
+              extensions={cmExtensions}
+              viewRef={setCmView}
+            />
+          </div>
+          <div className="relative w-8 ml-2">
+            {commentBtnTop !== null && (
+              <button
+                type="button"
+                className="hover:bg-gray-100 p-2 rounded-md"
+                style={{ transform: `translateY(${commentBtnTop}px)` }}
+                aria-label="Add comment"
+              >
+                <MessageCircle className="text-gray-500" size={20} />
+              </button>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );

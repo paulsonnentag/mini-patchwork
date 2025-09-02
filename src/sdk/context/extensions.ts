@@ -1,6 +1,6 @@
 import { useCallback } from "react";
 import { defineField } from "./core/fields";
-import { useDerivedSharedContext } from "./core/sharedContext";
+import { useDerivedSharedContext } from "./core/hooks";
 import { ObjRef } from "./core/objRefs";
 
 export type ExtensionValue = {
@@ -20,7 +20,7 @@ export const useExtensionsAt = (): ((
 ) => Annotation<ExtensionValue>[]) => {
   const allExtensions: Annotation<ExtensionValue>[] = useDerivedSharedContext(
     (context) => {
-      return context.getAllObjRefs().flatMap((objRef) => {
+      return context.getAll().flatMap((objRef) => {
         const ext = context.getField(objRef, Extension);
         if (!ext) return [];
         return [{ objRef, field: ext }];

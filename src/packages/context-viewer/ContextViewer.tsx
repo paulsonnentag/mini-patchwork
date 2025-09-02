@@ -1,12 +1,12 @@
 import { useMemo, useState } from "react";
-import { useDerivedSharedContext } from "../../sdk/context/core/sharedContext";
+import { useDerivedSharedContext } from "../../sdk/context/core/hooks";
 import { ToolProps } from "../../sdk/types";
 import { TextSpanRef, type ObjRef } from "../../sdk/context/core/objRefs";
 
 export const ContextViewer = (_props: ToolProps) => {
   const { rows, refMap } = useDerivedSharedContext((context) => {
     const dumpRows = context.dump();
-    const refs = context.getAllObjRefs();
+    const refs = context.getAll();
     const map = new Map<string, ObjRef>();
     for (const ref of refs) {
       let key = (ref.path as any[]).join(".");

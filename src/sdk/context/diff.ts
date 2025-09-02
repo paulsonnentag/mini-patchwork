@@ -1,14 +1,11 @@
 import * as Automerge from "@automerge/automerge";
 import { DocHandle } from "@automerge/automerge-repo";
-import { useCallback, useEffect } from "react";
+import { last } from "../../lib/last";
 import { lookup } from "../../lib/lookup";
+import { Annotation } from "./core/annotations";
 import { defineField } from "./core/fields";
 import { ObjRef, PathRef, TextSpanRef } from "./core/objRefs";
-import {
-  useDerivedSharedContext,
-  useSharedContext,
-} from "./core/sharedContext";
-import { last } from "../../lib/last";
+import { useDerivedSharedContext } from "./core/hooks";
 
 type AddedDiff = {
   type: "added";
@@ -31,193 +28,149 @@ export type DiffValue<T = unknown> =
 
 const Diff = defineField<DiffValue>("diff");
 
-export const useAddDiffOfDoc = (
+export const getDiffOfDoc = (
   docHandle?: DocHandle<unknown>,
   headsBefore?: Automerge.Heads
-) => {
-  const context = useSharedContext();
+): Annotation[] => {
+  const annotations: Annotation[] = [];
 
-  useEffect(() => {
-    if (!headsBefore || !docHandle) {
-      return;
+  if (!headsBefore || !docHandle) {
+    return [];
+  }
+
+  const docBefore = Automerge.view(docHandle.doc(), headsBefore);
+  const docAfter = docHandle.doc();
+
+  const patches = Automerge.diff(
+    docAfter,
+    headsBefore,
+    Automerge.getHeads(docAfter)
+  );
+
+  // Track which ancestor paths we've marked as modified during this pass
+  const modifiedPaths = new Set<string>();
+
+  for (const patch of patches) {
+    const ancestorPath =
+      typeof last(patch.path) === "number"
+        ? patch.path.slice(0, -1)
+        : patch.path;
+
+    // First, ensure ancestors are marked as modified incrementally.
+    // We assume patches are ordered from higher-level to lower-level paths.
+    // Add modified for all ancestors above the leaf (exclude root and the leaf itself).
+    for (let i = ancestorPath.length; i > 0; i--) {
+      const ancestorSubPath = ancestorPath.slice(0, i);
+      const key = JSON.stringify(ancestorSubPath);
+      if (modifiedPaths.has(key)) break;
+      const ancestorRef = new PathRef(docHandle, ancestorSubPath);
+      const before = lookup(docBefore, ancestorSubPath);
+
+      if (before) {
+        annotations.push(ancestorRef.with(Diff({ type: "changed", before })));
+      } else {
+        annotations.push(ancestorRef.with(Diff({ type: "added" })));
+      }
+
+      modifiedPaths.add(key);
     }
 
-    let retract = () => {};
+    // Then add leaf annotations for the specific patch
+    const objRef = new PathRef(docHandle, patch.path);
 
-    const onChange = () => {
-      const docBefore = Automerge.view(docHandle.doc(), headsBefore);
-      const docAfter = docHandle.doc();
+    switch (patch.action) {
+      case "put":
+        annotations.push(objRef.with(Diff({ type: "added" })));
+        break;
 
-      const patches = Automerge.diff(
-        docAfter,
-        headsBefore,
-        Automerge.getHeads(docAfter)
-      );
+      case "del": {
+        // is this a span deletion?
+        if (typeof last(patch.path) === "number") {
+          // const length = patch.length ?? 1;
+          const parentPath = patch.path.slice(0, -1);
+          const parent = lookup(docBefore, parentPath);
 
-      retract();
-      retract = context.change((tx) => {
-        // Track which ancestor paths we've marked as modified during this pass
-        const modifiedPaths = new Set<string>();
+          console.log("position", last(patch.path));
 
-        for (const patch of patches) {
-          const ancestorPath =
-            typeof last(patch.path) === "number"
-              ? patch.path.slice(0, -1)
-              : patch.path;
+          // for text mark the span as deleted
+          if (typeof parent === "string") {
+            const position = last(patch.path) as number;
+            // const cursor = Automerge.getCursor(
+            //   docAfter,
+            //   parentPath,
+            //   position
+            // );
 
-          // First, ensure ancestors are marked as modified incrementally.
-          // We assume patches are ordered from higher-level to lower-level paths.
-          // Add modified for all ancestors above the leaf (exclude root and the leaf itself).
-          for (let i = ancestorPath.length; i > 0; i--) {
-            const ancestorSubPath = ancestorPath.slice(0, i);
-            const key = JSON.stringify(ancestorSubPath);
-            if (modifiedPaths.has(key)) break;
-            const ancestorRef = new PathRef(docHandle, ancestorSubPath);
-            const before = lookup(docBefore, ancestorSubPath);
+            // const from = Automerge.getCursorPosition(
+            //   docBefore,
+            //   parentPath,
+            //   cursor
+            // );
+            // const to = from + patch.length;
 
-            if (before) {
-              tx.add(ancestorRef).with(Diff({ type: "changed", before }));
-            } else {
-              tx.add(ancestorRef).with(Diff({ type: "added" }));
-            }
+            const textSpan = new TextSpanRef(
+              docHandle,
+              parentPath,
+              position,
+              position
+            );
 
-            modifiedPaths.add(key);
+            // todo: implement
+            const before = "";
+
+            annotations.push(textSpan.with(Diff({ type: "deleted", before })));
+
+            // for arrays mark the indiviual objects in the range as deleted
+          } else if (Array.isArray(parent)) {
+            throw new Error("not implemented");
+          } else {
+            throw new Error("Unexpected value, this should never happen");
           }
 
-          // Then add leaf annotations for the specific patch
-          const objRef = new PathRef(docHandle, patch.path);
-
-          switch (patch.action) {
-            case "put":
-              tx.add(objRef).with(Diff({ type: "added" }));
-              break;
-
-            case "del": {
-              // is this a span deletion?
-              if (typeof last(patch.path) === "number") {
-                const length = patch.length ?? 1;
-                const parentPath = patch.path.slice(0, -1);
-                const parent = lookup(docBefore, parentPath);
-
-                console.log("position", last(patch.path));
-
-                // for text mark the span as deleted
-                if (typeof parent === "string") {
-                  const position = last(patch.path) as number;
-                  // const cursor = Automerge.getCursor(
-                  //   docAfter,
-                  //   parentPath,
-                  //   position
-                  // );
-
-                  // const from = Automerge.getCursorPosition(
-                  //   docBefore,
-                  //   parentPath,
-                  //   cursor
-                  // );
-                  // const to = from + patch.length;
-
-                  const textSpan = new TextSpanRef(
-                    docHandle,
-                    parentPath,
-                    position,
-                    position
-                  );
-
-                  // todo: implement
-                  const before = "";
-
-                  tx.add(textSpan).with(Diff({ type: "deleted", before }));
-
-                  // for arrays mark the indiviual objects in the range as deleted
-                } else if (Array.isArray(parent)) {
-                  throw new Error("not implemented");
-                } else {
-                  throw new Error("Unexpected value, this should never happen");
-                }
-
-                // ... otherwise this is a deletion of a key in an object
-              } else {
-                const before = lookup(docBefore, patch.path);
-                tx.add(objRef).with(Diff({ type: "deleted", before }));
-              }
-              break;
-            }
-
-            case "insert": {
-              tx.add(objRef).with(Diff({ type: "added" }));
-              break;
-            }
-
-            case "splice": {
-              const parentPath = patch.path.slice(0, -1);
-              const from = last(patch.path) as number;
-              const to = from + patch.value.length;
-              const textSpan = new TextSpanRef(docHandle, parentPath, from, to);
-
-              tx.add(textSpan).with(Diff({ type: "added" }));
-            }
-          }
+          // ... otherwise this is a deletion of a key in an object
+        } else {
+          const before = lookup(docBefore, patch.path);
+          annotations.push(objRef.with(Diff({ type: "deleted", before })));
         }
-      });
-    };
-
-    onChange();
-    docHandle.on("change", onChange);
-
-    return () => {
-      retract();
-      docHandle.off("change", onChange);
-    };
-  }, [context, docHandle, headsBefore]);
-};
-
-// are annotations a good idea?
-type Annotation<T> = {
-  objRef: ObjRef;
-  field: T;
-};
-
-export const useAllDiffs = (): Annotation<DiffValue>[] => {
-  return useDerivedSharedContext((context) => {
-    return context.getAllObjRefs().flatMap((objRef) => {
-      const diff = context.getField(objRef, Diff);
-      if (!diff) {
-        return [];
+        break;
       }
-      return { objRef, field: diff };
-    });
-  });
+
+      case "insert": {
+        annotations.push(objRef.with(Diff({ type: "added" })));
+        break;
+      }
+
+      case "splice":
+        {
+          const parentPath = patch.path.slice(0, -1);
+          const from = last(patch.path) as number;
+          const to = from + patch.value.length;
+          const textSpan = new TextSpanRef(docHandle, parentPath, from, to);
+
+          annotations.push(textSpan.with(Diff({ type: "added" })));
+        }
+        break;
+    }
+  }
+
+  return annotations;
 };
 
-export const useGetDiff = (): ((objRef: ObjRef) => DiffValue | undefined) => {
-  const diffAnnotations: Annotation<DiffValue>[] = useAllDiffs();
-
-  return useCallback(
-    (objRef: ObjRef) =>
-      diffAnnotations.find((annotation) => annotation.objRef.isEqual(objRef))
-        ?.field,
-    [diffAnnotations]
+export const useDiff = (objRef: ObjRef) =>
+  useDerivedSharedContext((context) =>
+    context
+      .getAllWith(Diff)
+      .find((annotation) => annotation.objRef.isEqual(objRef))
+      ?.get(Diff)
   );
-};
 
-export const useGetDiffsAt = (): ((
-  objRef?: ObjRef
-) => Annotation<DiffValue>[]) => {
-  const diffAnnotations: Annotation<DiffValue>[] = useAllDiffs();
-
-  return useCallback(
-    (objRef?: ObjRef) => {
-      if (!objRef) {
-        return [];
-      }
-
-      return diffAnnotations.filter(
+export const useDiffAnnotationsAt = (objRef: ObjRef) =>
+  useDerivedSharedContext((context) =>
+    context
+      .getAllWith(Diff)
+      .filter(
         (annotation) =>
           annotation.objRef.isPartOf(objRef) &&
           !annotation.objRef.isEqual(objRef)
-      );
-    },
-    [diffAnnotations]
+      )
   );
-};

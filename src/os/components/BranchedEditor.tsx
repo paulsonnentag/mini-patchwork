@@ -1,13 +1,15 @@
 import * as Automerge from "@automerge/automerge";
-import { startTransition, Suspense, useEffect, useState } from "react";
+import { AutomergeUrl } from "@automerge/automerge-repo";
 import {
   useDocHandle,
   useDocument,
   useRepo,
 } from "@automerge/automerge-repo-react-hooks";
-import { AutomergeUrl } from "@automerge/automerge-repo";
-import { useAddDiffOfDoc } from "../../sdk/context/diff";
+import { startTransition, useEffect, useMemo, useState } from "react";
+import { getDiffOfDoc } from "../../sdk/context/diff";
 import { ToolProps } from "../../sdk/types";
+import { Annotation } from "../../sdk/context/core/annotations";
+import { useTransaction } from "../../sdk/context/core/hooks";
 
 type BranchedProps = ToolProps & {
   docUrl: string;
@@ -37,11 +39,30 @@ export const BranchedEditor = ({ docUrl, tool: Tool }: BranchedProps) => {
   const [highlightChanges, setHighlightChanges] = useState(true);
 
   const checkedOutDocHandle = useDocHandle(checkedOutDocUrl);
+  const checkedOutDoc = useDocument(checkedOutDocUrl);
 
-  useAddDiffOfDoc(
-    checkedOutDocHandle,
-    highlightChanges ? selectedBranch?.forkedAt : undefined
-  );
+  const diff = useMemo<Annotation[]>(() => {
+    // make eslint happy, we need checkedOutDoc as a dependency because we need
+    // to re-run the diff when the checked out doc changes
+    void checkedOutDoc;
+
+    if (!selectedBranch || !highlightChanges) {
+      return [];
+    }
+
+    return getDiffOfDoc(
+      checkedOutDocHandle,
+      highlightChanges ? selectedBranch?.forkedAt : undefined
+    );
+  }, [checkedOutDocHandle, highlightChanges, selectedBranch, checkedOutDoc]);
+
+  const diffTransaction = useTransaction();
+
+  useEffect(() => {
+    diffTransaction.change((add) => {
+      add(diff);
+    });
+  }, [diff, diffTransaction]);
 
   const shouldAddBranchesDocUrl = doc && doc.branchesDocUrl === undefined;
 

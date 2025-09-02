@@ -1,17 +1,14 @@
-import { Tool } from "../sdk/types";
-import { MarkdownTool } from "../packages/markdown";
-import { TodoTool } from "../packages/todo";
 import { AutomergeUrl } from "@automerge/automerge-repo";
 import { useDocument } from "@automerge/automerge-repo-react-hooks";
 import { useEffect, useState } from "react";
-import { PatchworkDoc } from "../sdk/types";
-import { MapTool } from "../packages/map";
-import { PotluckTool } from "../packages/potluck";
-import { ContextViewerTool } from "../packages/context-viewer";
+import { TodoTool } from "../packages/todo";
+import { PatchworkDoc, Tool } from "../sdk/types";
 
-export const MAIN_TOOLS: Tool[] = [MarkdownTool, TodoTool];
+export const MAIN_TOOLS: Tool[] = [/*MarkdownTool,*/ TodoTool];
 
-export const SIDEBAR_TOOLS: Tool[] = [MapTool, PotluckTool, ContextViewerTool];
+export const SIDEBAR_TOOLS: Tool[] = [
+  /*MapTool, PotluckTool, ContextViewerTool*/
+];
 
 export const getCompatibleMainTools = (doc: any) => {
   MAIN_TOOLS.filter((tool) => tool.supportsDocument(doc));

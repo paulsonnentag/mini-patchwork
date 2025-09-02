@@ -5,7 +5,7 @@ import { IndexedDBStorageAdapter } from "@automerge/automerge-repo-storage-index
 import ReactDOM from "react-dom/client";
 import "./index.css";
 import { Frame } from "./os/components/Frame";
-import { SharedContext } from "./sdk/context/core/sharedContext";
+import { SharedContext } from "./sdk/context/core/hooks";
 import { Context } from "./sdk/context/core/context";
 
 const repo = new Repo({

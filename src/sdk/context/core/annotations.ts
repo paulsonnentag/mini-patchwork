@@ -11,8 +11,8 @@ export class Annotation {
     return this.objRef.value;
   }
 
-  get<T>(field: FieldType<T>): T {
-    return this.fields.get(field);
+  get<T>(type: FieldType<T>): T {
+    return this.fields.get(type);
   }
 
   with<T>(field: Field<T>): Annotation {

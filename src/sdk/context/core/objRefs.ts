@@ -1,6 +1,8 @@
 import * as Automerge from "@automerge/automerge";
 import { DocHandle } from "@automerge/automerge-repo";
 import { lookup } from "../../../lib/lookup";
+import { Field } from "./fields";
+import { Annotation } from "./annotations";
 
 export abstract class ObjRef<Obj = unknown, Doc = unknown> {
   protected readonly docHandle: DocHandle<Doc>;
@@ -21,6 +23,10 @@ export abstract class ObjRef<Obj = unknown, Doc = unknown> {
   abstract change(fn: (obj: Obj) => void): void;
 
   protected abstract resolve(doc: Doc): Obj | undefined;
+
+  with<T>(field: Field<T>): Annotation {
+    return new Annotation(this, new Map([[field.type, field.value]]));
+  }
 
   valueAt(heads: Automerge.Heads) {
     return this.resolve(Automerge.view(this.docHandle.doc(), heads));

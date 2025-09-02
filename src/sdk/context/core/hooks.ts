@@ -1,5 +1,12 @@
 import { Context } from "./context";
-import { createContext, useContext, useEffect, useRef, useState } from "react";
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 
 export const SharedContext = createContext<Context | null>(null);
 
@@ -27,7 +34,7 @@ export const useDerivedSharedContext = <V>(
     computationRef.current(context);
 
     // subscribe for subsequent changes
-    const unsubscribe = context.onChange(() => {
+    const unsubscribe = context.subscribe(() => {
       const newState = computationRef.current(context);
       setState(newState);
     });
@@ -38,4 +45,17 @@ export const useDerivedSharedContext = <V>(
   }, [context]);
 
   return state;
+};
+
+export const useTransaction = () => {
+  const context = useSharedContext();
+  const transaction = useMemo(() => context.transaction(), [context]);
+
+  useEffect(() => {
+    return () => {
+      transaction.retract();
+    };
+  }, [transaction]);
+
+  return transaction;
 };

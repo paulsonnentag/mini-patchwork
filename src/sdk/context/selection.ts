@@ -1,35 +1,31 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback } from "react";
 import { defineField } from "./core/fields";
-import {
-  useDerivedSharedContext,
-  useSharedContext,
-} from "./core/sharedContext";
+import { useDerivedSharedContext, useTransaction } from "./core/hooks";
 import { ObjRef } from "./core/objRefs";
 
 const IsSelected = defineField<boolean>("IsSelected");
 
 export const useSelection = () => {
-  const context = useSharedContext();
+  const transaction = useTransaction();
+
   const selectedObjRefs = useDerivedSharedContext((context) =>
     context
-      .getAllObjRefs()
-      .filter((objRef) => context.getField(objRef, IsSelected) === true)
+      .getAllWith(IsSelected)
+      .flatMap((annotation) =>
+        annotation.get(IsSelected) === true ? annotation.objRef : []
+      )
   );
 
-  const setSelection = useMemo(() => {
-    console.log("setSelection");
-
-    let retract = () => {};
-
-    return (objRefs: ObjRef[]) => {
-      retract();
-      retract = context.change((context) => {
+  const setSelection = useCallback(
+    (objRefs: ObjRef[]) => {
+      transaction.change((add) => {
         for (const objRef of objRefs) {
-          context.add(objRef).with(IsSelected(true));
+          add(objRef.with(IsSelected(true)));
         }
       });
-    };
-  }, [context]);
+    },
+    [transaction]
+  );
 
   const isSelected = useCallback(
     (objRef: ObjRef) =>

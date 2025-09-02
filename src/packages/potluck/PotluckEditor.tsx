@@ -13,7 +13,7 @@ import {
 import { ArrowLeft, ArrowLeftRight, ArrowRight } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ObjRef, PathRef, TextSpanRef } from "../../sdk/context/core/objRefs";
-import { useSharedContext } from "../../sdk/context/core/sharedContext";
+import { useSharedContext } from "../../sdk/context/core/hooks";
 import { ToolProps } from "../../sdk/types";
 import { useSelection } from "../../sdk/context/selection";
 import { Codemirror } from "../../lib/codemirror";
@@ -155,12 +155,12 @@ export const PotluckSearch = ({
         return;
       }
 
-      const nextMatches = context.getAllObjRefs().flatMap((objRef) =>
+      const nextMatches = context.getAll().flatMap((objRef) =>
         findMatches(objRef, regExp).filter((m) => {
-          if (matchKeys.has(m.textSpan.toKey())) {
+          if (matchKeys.has(m.textSpan.toId())) {
             return false;
           }
-          matchKeys.add(m.textSpan.toKey());
+          matchKeys.add(m.textSpan.toId());
           return true;
         })
       );
@@ -175,10 +175,10 @@ export const PotluckSearch = ({
 
     onChange();
 
-    context.onChange(onChange);
+    context.subscribe(onChange);
 
     return () => {
-      context.offChange(onChange);
+      context.unsubscribe(onChange);
     };
   }, [searchRef.value.pattern]);
 
@@ -191,7 +191,7 @@ export const PotluckSearch = ({
       desired = matches.map((m) => m.textSpan);
     }
 
-    const desiredKeys = desired.map((r) => r.toKey()).sort();
+    const desiredKeys = desired.map((r) => r.toId()).sort();
     const currentKeys = lastAppliedSelectionKeysRef.current;
     const sameLength = currentKeys.length === desiredKeys.length;
     let equal = sameLength;

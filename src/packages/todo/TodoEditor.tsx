@@ -4,7 +4,7 @@ import {
 } from "@automerge/automerge-repo-react-hooks";
 import { useState } from "react";
 import { ObjRef, PathRef } from "../../sdk/context/core/objRefs";
-import { useGetDiff } from "../../sdk/context/diff";
+import { useDiff } from "../../sdk/context/diff";
 import { classNames } from "../../lib/classNames";
 import { ToolProps } from "../../sdk/types";
 
@@ -87,7 +87,7 @@ type TodoItemProps = {
 
 const TodoItem = ({ todoRef }: TodoItemProps) => {
   const todo = todoRef.value;
-  const getDiff = useGetDiff();
+  const diff = useDiff(todoRef);
 
   const onToogle = () => {
     todoRef.change((todo) => {
@@ -102,8 +102,6 @@ const TodoItem = ({ todoRef }: TodoItemProps) => {
   };
 
   if (!todo) return null;
-
-  const diff = getDiff(todoRef);
 
   return (
     <div

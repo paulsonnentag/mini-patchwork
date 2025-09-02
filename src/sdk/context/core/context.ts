@@ -1,32 +1,94 @@
 import { deepEqual } from "../../../lib/deepEqual";
 import { Annotation } from "./annotations";
-import { Field, FieldType } from "./fields";
-import { ObjRef, TextSpanRef } from "./objRefs";
+import { FieldType } from "./fields";
+import { ObjRef } from "./objRefs";
 
 export class Context {
-  #objectRefs = new Map<string, number>();
-  idToObjRef = new Map<string, ObjRef>();
+  #objectRefCountById = new Map<string, number>();
+  #objectRefsById = new Map<string, ObjRef>();
   #fieldsByObjId = new Map<string, Map<FieldType<any>, any[]>>();
   #subscribers = new Set<() => void>();
 
-  getAllObjRefs(): ObjRef[] {
-    return Array.from(this.idToObjRef.values());
+  getAll(): Annotation[] {
+    return Array.from(this.#objectRefsById.values()).map(
+      (objRef) => new Annotation(objRef, new Map())
+    );
+  }
+
+  getAllWith(field: FieldType<any>): Annotation[] {
+    return Array.from(this.#objectRefsById.values()).flatMap((objRef) => {
+      const fields = this.#fieldsByObjId.get(objRef.toId());
+      if (!fields) return [];
+      const values = fields.get(field);
+      if (!values) return [];
+
+      // for now just pick first
+      const first = values[0];
+
+      return new Annotation(objRef, new Map([[field, first]]));
+    });
   }
 
   change(changeFn: ChangeFn): Transaction {
     const state = this.#change(changeFn);
-    return new Transaction(this.#retract, this.#change, state);
+    return new Transaction(
+      this.#retract.bind(this),
+      this.#change.bind(this),
+      state
+    );
   }
 
   transaction(): Transaction {
-    return new Transaction(this.#retract, this.#change);
+    return new Transaction(this.#retract.bind(this), this.#change.bind(this), {
+      objRefs: [],
+      annotations: [],
+    });
   }
 
   #notify() {
     this.#subscribers.forEach((subscriber) => subscriber());
   }
 
-  #retract(transactionState: TransactionState) {}
+  #retract(transactionState: TransactionState) {
+    // Decrement reference counts for object refs; remove when count reaches zero
+    for (const objRef of transactionState.objRefs) {
+      const id = objRef.toId();
+      const currentCount = this.#objectRefCountById.get(id) ?? 0;
+      if (currentCount <= 1) {
+        this.#objectRefCountById.delete(id);
+        this.#objectRefsById.delete(id);
+      } else {
+        this.#objectRefCountById.set(id, currentCount - 1);
+      }
+    }
+
+    // Retract annotations: remove a single matching value per field; remove field if empty
+    for (const annotation of transactionState.annotations) {
+      const objId = annotation.objRef.toId();
+      const fieldsForObj = this.#fieldsByObjId.get(objId);
+      if (!fieldsForObj) continue;
+
+      for (const [fieldType, fieldValue] of annotation.fields.entries()) {
+        const values = fieldsForObj.get(fieldType);
+        if (!values) continue;
+
+        const index = values.findIndex((v) => deepEqual(v, fieldValue));
+        if (index !== -1) {
+          values.splice(index, 1);
+        }
+
+        if (values.length === 0) {
+          fieldsForObj.delete(fieldType);
+        }
+      }
+
+      if (fieldsForObj.size === 0) {
+        this.#fieldsByObjId.delete(objId);
+      }
+    }
+
+    this.#notify();
+  }
 
   #add(
     value: ObjRef | Annotation | (ObjRef | Annotation)[],
@@ -59,14 +121,44 @@ export class Context {
       this.#retract(prevState);
     }
 
+    // Apply new object refs with reference counting
     for (const objRef of newState.objRefs) {
+      const id = objRef.toId();
+      const currentCount = this.#objectRefCountById.get(id) ?? 0;
+      this.#objectRefCountById.set(id, currentCount + 1);
+      // Ensure we remember the latest ObjRef for this id
+      this.#objectRefsById.set(id, objRef);
     }
 
+    // Apply annotations: aggregate all values per field per object
     for (const annotation of newState.annotations) {
+      const objId = annotation.objRef.toId();
+      // Ensure we remember the ObjRef for this object id
+      this.#objectRefsById.set(objId, annotation.objRef);
+
+      let fieldsForObj = this.#fieldsByObjId.get(objId);
+      if (!fieldsForObj) {
+        fieldsForObj = new Map();
+        this.#fieldsByObjId.set(objId, fieldsForObj);
+      }
+
+      for (const [fieldType, fieldValue] of annotation.fields.entries()) {
+        let values = fieldsForObj.get(fieldType);
+        if (!values) {
+          values = [];
+          fieldsForObj.set(fieldType, values);
+        }
+        // Add value as a separate entry (allow duplicates across annotations)
+        values.push(fieldValue);
+      }
     }
+
+    this.#notify();
+
+    return newState;
   }
 
-  onChange(fn: () => void): () => void {
+  subscribe(fn: () => void): () => void {
     this.#subscribers.add(fn);
 
     return () => {
@@ -74,7 +166,7 @@ export class Context {
     };
   }
 
-  offChange(fn: () => void): void {
+  unsubscribe(fn: () => void): void {
     this.#subscribers.delete(fn);
   }
 }

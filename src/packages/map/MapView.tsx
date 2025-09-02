@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { useSelection } from "../../sdk/context/selection";
 import { MapLibreMap, Marker } from "./lib/maplibre";
-import { useDerivedSharedContext } from "../../sdk/context/core/sharedContext";
+import { useDerivedSharedContext } from "../../sdk/context/core/hooks";
 import { ObjRef } from "../../sdk/context/core/objRefs";
 
 type GeoPosition = {
@@ -18,14 +18,12 @@ export type LocationDoc = {
 export const MapView = () => {
   const { isSelected, setSelection } = useSelection();
   const objRefsWithLatLng = useDerivedSharedContext((context) => {
-    return context
-      .getAllObjRefs()
-      .filter((objRef): objRef is ObjRef<GeoPosition> => {
-        const value = objRef.value as any;
-        return (
-          value && typeof value === "object" && "lat" in value && "lng" in value
-        );
-      });
+    return context.getAll().filter((objRef): objRef is ObjRef<GeoPosition> => {
+      const value = objRef.value as any;
+      return (
+        value && typeof value === "object" && "lat" in value && "lng" in value
+      );
+    });
   });
 
   const markers = useMemo<Marker[]>(

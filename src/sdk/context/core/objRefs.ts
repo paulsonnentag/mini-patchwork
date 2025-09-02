@@ -16,7 +16,7 @@ export abstract class ObjRef<Obj = unknown, Doc = unknown> {
     return new PathRef(this.docHandle, []);
   }
 
-  abstract toKey(): string;
+  abstract toId(): string;
 
   abstract change(fn: (obj: Obj) => void): void;
 
@@ -27,7 +27,7 @@ export abstract class ObjRef<Obj = unknown, Doc = unknown> {
   }
 
   doesOverlap(other: ObjRef) {
-    return this.toKey() === other.toKey();
+    return this.toId() === other.toId();
   }
 
   isPartOf(other: ObjRef) {
@@ -53,7 +53,7 @@ export abstract class ObjRef<Obj = unknown, Doc = unknown> {
   }
 
   isEqual(other: ObjRef) {
-    return this.toKey() === other.toKey();
+    return this.toId() === other.toId();
   }
 }
 
@@ -76,7 +76,7 @@ export class PathRef<Obj = unknown, Doc = unknown> extends ObjRef<Obj, Doc> {
     return lookup(doc, this.path);
   }
 
-  toKey(): string {
+  toId(): string {
     const url = this.docHandle.url;
     const path = JSON.stringify(this.path);
     return `${url}|${path}`;
@@ -128,7 +128,7 @@ export class IdRef<
     return objects.find((obj: any) => obj[this.key] === this.id);
   }
 
-  toKey(): string {
+  toId(): string {
     const url = this.docHandle.url;
     const path = JSON.stringify(this.path);
     const id = this.id;
@@ -173,14 +173,14 @@ export class TextSpanRef<Doc = unknown> extends ObjRef<string, Doc> {
     this.value = value;
   }
 
-  protected resolve(doc: Doc): string | undefined {
+  protected resolve(doc: Automerge.Doc<Doc>): string | undefined {
     const from = Automerge.getCursorPosition(doc, this.path, this.fromCursor);
     const to = Automerge.getCursorPosition(doc, this.path, this.toCursor);
 
     return lookup<string>(doc, this.path)!.slice(from, to);
   }
 
-  toKey(): string {
+  toId(): string {
     const url = this.docHandle.url;
     const path = JSON.stringify(this.path);
     const fromCursor = this.fromCursor;

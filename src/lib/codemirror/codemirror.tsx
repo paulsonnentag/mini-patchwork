@@ -3,15 +3,10 @@ import { automergeSyncPlugin } from "@automerge/automerge-codemirror";
 import { AutomergeUrl } from "@automerge/automerge-repo";
 import { useDocHandle } from "@automerge/automerge-repo-react-hooks";
 import { Extension, StateEffect, StateField } from "@codemirror/state";
-import {
-  Decoration,
-  DecorationSet,
-  EditorView,
-  ViewUpdate,
-} from "@codemirror/view";
+import { Decoration, DecorationSet, EditorView } from "@codemirror/view";
 import { useEffect, useRef, useState } from "react";
-import "./codemirror.css";
 import { lookup } from "../lookup";
+import "./codemirror.css";
 
 type CodemirrorProps = {
   docUrl: AutomergeUrl;

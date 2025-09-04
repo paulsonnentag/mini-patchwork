@@ -4,7 +4,7 @@ import { last } from "../../lib/last";
 import { lookup } from "../../lib/lookup";
 import { defineField } from "./core/fields";
 import { useDerivedSharedContext } from "./core/hooks";
-import { PathRef, Ref, RefWith, TextSpanRef } from "./core/refs";
+import { PathRef, Ref, RefWithFields, TextSpanRef } from "./core/refs";
 
 type AddedDiff = {
   type: "added";
@@ -32,8 +32,8 @@ export const Diff = defineField<Diff, DiffValue>("diff", DiffSymbol);
 export const getDiffOfDoc = (
   docHandle?: DocHandle<unknown>,
   headsBefore?: Automerge.Heads
-): RefWith<Diff>[] => {
-  const changedRefs: RefWith<Diff>[] = [];
+): RefWithFields<Diff>[] => {
+  const changedRefs: RefWithFields<Diff>[] = [];
 
   if (!headsBefore || !docHandle) {
     return [];
@@ -157,12 +157,15 @@ export const getDiffOfDoc = (
   return changedRefs;
 };
 
-export const useDiff = (objRef: Ref) =>
-  useDerivedSharedContext((context) => context.resolve(objRef).get(Diff));
+export const useDiff = (ref: Ref) =>
+  useDerivedSharedContext((context) => context.resolve(ref).get(Diff));
 
-export const useDiffsAt = (objRef: Ref): Ref<{ Fields: Diff }>[] =>
+export const useChangedRefsAt = (ref: Ref): RefWithFields<Diff>[] =>
   useDerivedSharedContext((context) =>
     context
       .getAllWith(Diff)
-      .filter((ref) => ref.isPartOf(objRef) && !ref.isEqual(objRef))
+      .filter(
+        (changedPart) =>
+          changedPart.ref.isPartOf(ref) && changedPart.ref !== ref
+      )
   );

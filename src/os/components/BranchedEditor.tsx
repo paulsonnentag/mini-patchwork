@@ -8,7 +8,7 @@ import {
 import { startTransition, useEffect, useMemo, useState } from "react";
 import { Diff, getDiffOfDoc } from "../../sdk/context/diff";
 import { ToolProps } from "../../sdk/types";
-import { RefWith } from "../../sdk/context/core/refs";
+import { RefWithFields } from "../../sdk/context/core/refs";
 import { useSharedContext } from "../../sdk/context/core/hooks";
 
 type BranchedProps = ToolProps & {
@@ -43,7 +43,7 @@ export const BranchedEditor = ({ docUrl, tool: Tool }: BranchedProps) => {
 
   const context = useSharedContext();
 
-  const diffsOfDoc = useMemo<RefWith<Diff>[]>(() => {
+  const diffsOfDoc = useMemo<RefWithFields<Diff>[]>(() => {
     // make eslint happy, we need checkedOutDoc as a dependency because we need
     // to re-run the diff when the checked out doc changes
     void checkedOutDoc;

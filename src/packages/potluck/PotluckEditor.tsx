@@ -12,7 +12,7 @@ import {
 } from "lucide-react";
 import { ArrowLeft, ArrowLeftRight, ArrowRight } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ObjRef, PathRef, TextSpanRef } from "../../sdk/context/core/objRefs";
+import { Ref, PathRef, TextSpanRef } from "../../sdk/context/core/refs";
 import { useSharedContext } from "../../sdk/context/core/hooks";
 import { ToolProps } from "../../sdk/types";
 import { useSelection } from "../../sdk/context/selection";
@@ -109,7 +109,7 @@ export const PotluckSearch = ({
   index,
   docUrl,
 }: {
-  searchRef: ObjRef<PotluckSearch>;
+  searchRef: Ref<PotluckSearch>;
   onDelete: () => void;
   index: number;
   docUrl: AutomergeUrl;
@@ -585,7 +585,7 @@ type Match = {
   textSpan: TextSpanRef;
 };
 
-const findMatches = (objRef: ObjRef<unknown>, regex: RegExp): Match[] => {
+const findMatches = (objRef: Ref<unknown>, regex: RegExp): Match[] => {
   const value = objRef.value;
 
   if (typeof value !== "string") {

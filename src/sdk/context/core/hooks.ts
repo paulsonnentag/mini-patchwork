@@ -1,12 +1,5 @@
+import { createContext, useContext, useEffect, useRef, useState } from "react";
 import { Context } from "./context";
-import {
-  createContext,
-  useContext,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
 
 export const SharedContext = createContext<Context | null>(null);
 
@@ -33,29 +26,18 @@ export const useDerivedSharedContext = <V>(
     // run immediately on mount or when context changes
     computationRef.current(context);
 
-    // subscribe for subsequent changes
-    const unsubscribe = context.subscribe(() => {
+    const onChange = () => {
       const newState = computationRef.current(context);
       setState(newState);
-    });
+    };
+
+    // subscribe for subsequent changes
+    context.subscribe(onChange);
 
     return () => {
-      unsubscribe();
+      context.unsubscribe(onChange);
     };
   }, [context]);
 
   return state;
-};
-
-export const useTransaction = () => {
-  const context = useSharedContext();
-  const transaction = useMemo(() => context.transaction(), [context]);
-
-  useEffect(() => {
-    return () => {
-      transaction.retract();
-    };
-  }, [transaction]);
-
-  return transaction;
 };

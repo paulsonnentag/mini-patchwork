@@ -2,10 +2,9 @@ import * as Automerge from "@automerge/automerge";
 import { DocHandle } from "@automerge/automerge-repo";
 import { last } from "../../lib/last";
 import { lookup } from "../../lib/lookup";
-import { Annotation } from "./core/annotations";
 import { defineField } from "./core/fields";
-import { ObjRef, PathRef, TextSpanRef } from "./core/objRefs";
 import { useDerivedSharedContext } from "./core/hooks";
+import { PathRef, Ref, RefWith, TextSpanRef } from "./core/refs";
 
 type AddedDiff = {
   type: "added";
@@ -26,13 +25,15 @@ export type DiffValue<T = unknown> =
   | ChangedDiff<T>
   | DeletedDiff<T>;
 
-const Diff = defineField<DiffValue>("diff");
+const DiffSymbol = Symbol("diff");
+export type Diff = typeof DiffSymbol;
+export const Diff = defineField<Diff, DiffValue>("diff", DiffSymbol);
 
 export const getDiffOfDoc = (
   docHandle?: DocHandle<unknown>,
   headsBefore?: Automerge.Heads
-): Annotation[] => {
-  const annotations: Annotation[] = [];
+): RefWith<Diff>[] => {
+  const changedRefs: RefWith<Diff>[] = [];
 
   if (!headsBefore || !docHandle) {
     return [];
@@ -67,9 +68,9 @@ export const getDiffOfDoc = (
       const before = lookup(docBefore, ancestorSubPath);
 
       if (before) {
-        annotations.push(ancestorRef.with(Diff({ type: "changed", before })));
+        changedRefs.push(ancestorRef.with(Diff({ type: "changed", before })));
       } else {
-        annotations.push(ancestorRef.with(Diff({ type: "added" })));
+        changedRefs.push(ancestorRef.with(Diff({ type: "added" })));
       }
 
       modifiedPaths.add(key);
@@ -80,7 +81,7 @@ export const getDiffOfDoc = (
 
     switch (patch.action) {
       case "put":
-        annotations.push(objRef.with(Diff({ type: "added" })));
+        changedRefs.push(objRef.with(Diff({ type: "added" })));
         break;
 
       case "del": {
@@ -118,7 +119,7 @@ export const getDiffOfDoc = (
             // todo: implement
             const before = "";
 
-            annotations.push(textSpan.with(Diff({ type: "deleted", before })));
+            changedRefs.push(textSpan.with(Diff({ type: "deleted", before })));
 
             // for arrays mark the indiviual objects in the range as deleted
           } else if (Array.isArray(parent)) {
@@ -130,13 +131,13 @@ export const getDiffOfDoc = (
           // ... otherwise this is a deletion of a key in an object
         } else {
           const before = lookup(docBefore, patch.path);
-          annotations.push(objRef.with(Diff({ type: "deleted", before })));
+          changedRefs.push(objRef.with(Diff({ type: "deleted", before })));
         }
         break;
       }
 
       case "insert": {
-        annotations.push(objRef.with(Diff({ type: "added" })));
+        changedRefs.push(objRef.with(Diff({ type: "added" })));
         break;
       }
 
@@ -147,30 +148,21 @@ export const getDiffOfDoc = (
           const to = from + patch.value.length;
           const textSpan = new TextSpanRef(docHandle, parentPath, from, to);
 
-          annotations.push(textSpan.with(Diff({ type: "added" })));
+          changedRefs.push(textSpan.with(Diff({ type: "added" })));
         }
         break;
     }
   }
 
-  return annotations;
+  return changedRefs;
 };
 
-export const useDiff = (objRef: ObjRef) =>
-  useDerivedSharedContext((context) =>
-    context
-      .getAllWith(Diff)
-      .find((annotation) => annotation.objRef.isEqual(objRef))
-      ?.get(Diff)
-  );
+export const useDiff = (objRef: Ref) =>
+  useDerivedSharedContext((context) => context.resolve(objRef).get(Diff));
 
-export const useDiffAnnotationsAt = (objRef: ObjRef) =>
+export const useDiffsAt = (objRef: Ref): Ref<{ Fields: Diff }>[] =>
   useDerivedSharedContext((context) =>
     context
       .getAllWith(Diff)
-      .filter(
-        (annotation) =>
-          annotation.objRef.isPartOf(objRef) &&
-          !annotation.objRef.isEqual(objRef)
-      )
+      .filter((ref) => ref.isPartOf(objRef) && !ref.isEqual(objRef))
   );

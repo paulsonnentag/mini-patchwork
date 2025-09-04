@@ -19,7 +19,7 @@ import { foldKeymap, indentOnInput, indentUnit } from "@codemirror/language";
 import { searchKeymap } from "@codemirror/search";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { defineField } from "../../sdk/context/core/fields";
-import { ObjRef, PathRef, TextSpanRef } from "../../sdk/context/core/objRefs";
+import { Ref, PathRef, TextSpanRef } from "../../sdk/context/core/refs";
 import { useSharedContext } from "../../sdk/context/core/hooks";
 import { useSelection } from "../../sdk/context/selection";
 import { useStaticCallback } from "../../lib/useStaticCalback";
@@ -40,7 +40,7 @@ export type MarkdownDoc = {
   content: string;
 };
 
-const Link = defineField<{ target: ObjRef }>("Link");
+const Link = defineField<{ target: Ref }>("Link");
 
 const PATH = ["content"];
 
@@ -218,7 +218,7 @@ export const MarkdownEditor = ({ docUrl }: ToolProps) => {
     const overlappingLinks = linkedDocs.filter((linkedDoc) =>
       selectedText.doesOverlap(linkedDoc.linkRef)
     );
-    const selectedObjects: ObjRef[] = [
+    const selectedObjects: Ref[] = [
       selectedText,
       ...overlappingLinks.map((linkedDoc) => linkedDoc.docRef),
     ];
@@ -324,7 +324,7 @@ export const MarkdownEditor = ({ docUrl }: ToolProps) => {
 
 type LinkedDocs = {
   linkRef: TextSpanRef;
-  docRef: ObjRef;
+  docRef: Ref;
 };
 
 const parseMarkdownLinks = async (

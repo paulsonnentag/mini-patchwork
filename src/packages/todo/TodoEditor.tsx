@@ -3,7 +3,7 @@ import {
   useDocument,
 } from "@automerge/automerge-repo-react-hooks";
 import { useState } from "react";
-import { ObjRef, PathRef } from "../../sdk/context/core/objRefs";
+import { Ref, PathRef } from "../../sdk/context/core/refs";
 import { useDiff } from "../../sdk/context/diff";
 import { classNames } from "../../lib/classNames";
 import { ToolProps } from "../../sdk/types";
@@ -18,6 +18,8 @@ export type TodoDoc = {
   title: string;
   todos: Todo[];
 };
+
+type TodoRef = PathRef<{ Value: Todo; Doc: TodoDoc }>;
 
 export const TodoEditor = ({ docUrl }: ToolProps) => {
   const [doc, changeDoc] = useDocument<TodoDoc>(docUrl);
@@ -69,10 +71,7 @@ export const TodoEditor = ({ docUrl }: ToolProps) => {
           </button>
         </div>
         {doc.todos.map((todo, index) => {
-          const todoRef = new PathRef<Todo, TodoDoc>(docHandle, [
-            "todos",
-            index,
-          ]);
+          const todoRef: TodoRef = new PathRef(docHandle, ["todos", index]);
 
           return <TodoItem key={todo.id} todoRef={todoRef} />;
         })}
@@ -82,7 +81,7 @@ export const TodoEditor = ({ docUrl }: ToolProps) => {
 };
 
 type TodoItemProps = {
-  todoRef: ObjRef<Todo>;
+  todoRef: TodoRef;
 };
 
 const TodoItem = ({ todoRef }: TodoItemProps) => {

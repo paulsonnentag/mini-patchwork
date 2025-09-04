@@ -1,22 +1,22 @@
-export class Field<T = unknown> {
-  constructor(readonly value: T, readonly type: FieldType<T>) {}
-
-  isA(type: FieldType<T>): boolean {
-    return type === this.type;
-  }
-}
-
-export type FieldType<T = unknown> = {
-  (value: T): Field<T>;
-  fieldName: string;
+export type FieldValue<Type extends symbol, Value> = {
+  type: Type;
+  value: Value;
 };
 
-export const defineField = <T>(fieldName: string): FieldType<T> => {
-  const constructor: FieldType<T> = (value: T) => {
-    return new Field(value, constructor);
-  };
+export type FieldType<Type extends symbol, Value> = {
+  (value: Value): FieldValue<Type, Value>;
+  fieldName: string;
+  type: Type;
+};
 
-  constructor.fieldName = fieldName;
-
-  return constructor;
+export const defineField = <Type extends symbol, Value>(
+  fieldName: string,
+  type: Type
+): FieldType<Type, Value> => {
+  return Object.assign(
+    (value: Value): FieldValue<Type, Value> => {
+      return { value, type };
+    },
+    { fieldName, type }
+  ) as FieldType<Type, Value>;
 };

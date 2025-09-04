@@ -4,7 +4,7 @@ import { lookup } from "../../../lib/lookup";
 import { FieldType, FieldValue } from "./fields";
 
 export abstract class Ref<
-  T extends { Value?: unknown; Fields?: symbol; Doc?: unknown } = {
+  R extends { Value?: unknown; Fields?: symbol; Doc?: unknown } = {
     Value: unknown;
     Fields: symbol;
     Doc: unknown;
@@ -12,38 +12,65 @@ export abstract class Ref<
 > {
   #fields = new Map<symbol, any>();
 
-  protected readonly docHandle: DocHandle<T["Doc"]>;
+  protected readonly docHandle: DocHandle<R["Doc"]>;
   readonly path: Automerge.Prop[];
-  abstract readonly value: T["Value"];
+  abstract readonly value: R["Value"];
 
-  constructor(docHandle: DocHandle<T["Doc"]>, path: Automerge.Prop[]) {
+  constructor(docHandle: DocHandle<R["Doc"]>, path: Automerge.Prop[]) {
     this.docHandle = docHandle;
     this.path = path;
   }
 
-  get docRef(): Ref<{ Doc: T["Doc"]; Value: T["Doc"] }> {
-    return new PathRef(this.docHandle, []);
+  get docRef(): Ref<{ Doc: R["Doc"]; Value: R["Doc"] }> {
+    return new PathRef(this.docHandle, []) as Ref<{
+      Doc: R["Doc"];
+      Value: R["Doc"];
+    }>;
   }
 
   abstract toId(): string;
 
-  abstract clone(): Ref<T>;
+  abstract clone(): Ref<R>;
 
-  abstract change(fn: (obj: T["Value"]) => void): void;
+  abstract change(fn: (obj: R["Value"]) => void): void;
 
-  protected abstract resolve(doc: T["Doc"]): T["Value"] | undefined;
+  protected abstract resolve(doc: R["Doc"]): R["Value"] | undefined;
 
   valueAt(heads: Automerge.Heads) {
     return this.resolve(Automerge.view(this.docHandle.doc(), heads));
   }
 
-  with<Type extends symbol, Value>(
-    field: FieldValue<Type, Value>
-  ): Ref<{ Value: T["Value"]; Fields: T["Fields"] | Type }> {
+  with<Type extends symbol, Value>(field: FieldValue<Type, Value>) {
     const clone = this.clone();
     clone.#fields = new Map(this.#fields);
     clone.#fields.set(field.type, field.value);
+    return clone as unknown as Ref<{
+      Value: R["Value"];
+      Fields: R["Fields"] | Type;
+    }>;
+  }
+
+  withFields(fields: Map<symbol, any>): Ref<R> {
+    const clone = this.clone();
+    clone.#fields = new Map(fields);
     return clone;
+  }
+
+  get<Type extends symbol, Value>(
+    field: FieldType<Type, Value>
+  ): Type extends R["Fields"] ? Value : Value | undefined {
+    return this.#fields.get(field.type);
+  }
+
+  has<Type extends symbol, Value>(field: FieldType<Type, Value>) {
+    return this.#fields.has(field.type) as Type extends R["Fields"]
+      ? true
+      : boolean;
+  }
+
+  // should be only used by context
+  get fields(): [symbol, any][] {
+    return Array.from(this.#fields.entries());
   }
 
   doesOverlap(other: Ref) {
@@ -77,24 +104,7 @@ export abstract class Ref<
   }
 }
 
-export class RefWith<Types extends symbol = never, R extends Ref = Ref> {
-  #fields = new Map<symbol, any>();
-
-  constructor(readonly ref: R, fields?: Map<symbol, any>) {
-    this.#fields = new Map(fields);
-  }
-
-  get<Type extends Types, Value>(field: FieldType<Type, Value>): Value {
-    return this.#fields.get(field.type) as Value;
-  }
-
-  // should be only used by context
-  fields(): [symbol, any][] {
-    return Array.from(this.#fields.entries());
-  }
-}
-
-export type RefWithUnknownFields = RefWith<symbol, Ref>;
+export type RefWith<Type extends symbol> = Ref<{ Fields: Type }>;
 
 export class PathRef<
   T extends { Value?: unknown; Doc?: unknown; Fields?: symbol } = {
@@ -283,6 +293,8 @@ export class TextSpanRef<
     );
   }
 
+  // todo: figure out what to do here
+  // we could implement a mutable string here but that feels bad
   change(fn: (obj: T["Value"]) => void): void {
     throw new Error("not implemented");
   }

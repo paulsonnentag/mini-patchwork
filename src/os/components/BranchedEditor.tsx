@@ -6,10 +6,10 @@ import {
   useRepo,
 } from "@automerge/automerge-repo-react-hooks";
 import { startTransition, useEffect, useMemo, useState } from "react";
-import { getDiffOfDoc } from "../../sdk/context/diff";
+import { Diff, getDiffOfDoc } from "../../sdk/context/diff";
 import { ToolProps } from "../../sdk/types";
-import { Annotation } from "../../sdk/context/core/annotations";
-import { useTransaction } from "../../sdk/context/core/hooks";
+import { RefWith } from "../../sdk/context/core/refs";
+import { useSharedContext } from "../../sdk/context/core/hooks";
 
 type BranchedProps = ToolProps & {
   docUrl: string;
@@ -41,7 +41,9 @@ export const BranchedEditor = ({ docUrl, tool: Tool }: BranchedProps) => {
   const checkedOutDocHandle = useDocHandle(checkedOutDocUrl);
   const checkedOutDoc = useDocument(checkedOutDocUrl);
 
-  const diff = useMemo<Annotation[]>(() => {
+  const context = useSharedContext();
+
+  const diffsOfDoc = useMemo<RefWith<Diff>[]>(() => {
     // make eslint happy, we need checkedOutDoc as a dependency because we need
     // to re-run the diff when the checked out doc changes
     void checkedOutDoc;
@@ -56,13 +58,9 @@ export const BranchedEditor = ({ docUrl, tool: Tool }: BranchedProps) => {
     );
   }, [checkedOutDocHandle, highlightChanges, selectedBranch, checkedOutDoc]);
 
-  const diffTransaction = useTransaction();
-
   useEffect(() => {
-    diffTransaction.change((add) => {
-      add(diff);
-    });
-  }, [diff, diffTransaction]);
+    context.replace(diffsOfDoc);
+  }, [context, diffsOfDoc]);
 
   const shouldAddBranchesDocUrl = doc && doc.branchesDocUrl === undefined;
 

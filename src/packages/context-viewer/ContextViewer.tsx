@@ -1,13 +1,13 @@
 import { useMemo, useState } from "react";
 import { useDerivedSharedContext } from "../../sdk/context/core/hooks";
 import { ToolProps } from "../../sdk/types";
-import { TextSpanRef, type ObjRef } from "../../sdk/context/core/objRefs";
+import { TextSpanRef, type Ref } from "../../sdk/context/core/refs";
 
 export const ContextViewer = (_props: ToolProps) => {
   const { rows, refMap } = useDerivedSharedContext((context) => {
     const dumpRows = context.dump();
     const refs = context.getAll();
-    const map = new Map<string, ObjRef>();
+    const map = new Map<string, Ref>();
     for (const ref of refs) {
       let key = (ref.path as any[]).join(".");
       if (ref instanceof TextSpanRef) key += `[${ref.from}:${ref.to}]`;
@@ -40,7 +40,7 @@ export const ContextViewer = (_props: ToolProps) => {
         field: string;
         fieldValuePretty: string;
         fieldValueRaw: any;
-        ref: ObjRef | undefined;
+        ref: Ref | undefined;
       };
     });
   }, [rows, refMap]);

@@ -1,7 +1,7 @@
 import { useCallback } from "react";
 import { defineField } from "./core/fields";
 import { useDerivedSharedContext, useTransaction } from "./core/hooks";
-import { ObjRef } from "./core/objRefs";
+import { Ref } from "./core/refs";
 
 const IsSelected = defineField<boolean>("IsSelected");
 
@@ -17,7 +17,7 @@ export const useSelection = () => {
   );
 
   const setSelection = useCallback(
-    (objRefs: ObjRef[]) => {
+    (objRefs: Ref[]) => {
       transaction.change((add) => {
         for (const objRef of objRefs) {
           add(objRef.with(IsSelected(true)));
@@ -28,7 +28,7 @@ export const useSelection = () => {
   );
 
   const isSelected = useCallback(
-    (objRef: ObjRef) =>
+    (objRef: Ref) =>
       selectedObjRefs.some((selectedObjRef) =>
         selectedObjRef.doesOverlap(objRef)
       ),

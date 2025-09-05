@@ -5,17 +5,11 @@ import {
   useDocument,
   useRepo,
 } from "@automerge/automerge-repo-react-hooks";
-import {
-  startTransition,
-  useContext,
-  useEffect,
-  useMemo,
-  useState,
-} from "react";
+import { startTransition, useEffect, useMemo, useState } from "react";
+import { useSubContext } from "../../sdk/context/core/hooks";
+import { RefWith } from "../../sdk/context/core/refs";
 import { Diff, getDiffOfDoc } from "../../sdk/context/diff";
 import { ToolProps } from "../../sdk/types";
-import { RefWith } from "../../sdk/context/core/refs";
-import { useSharedContext, useSubContext } from "../../sdk/context/core/hooks";
 
 type BranchedProps = ToolProps & {
   docUrl: string;
@@ -63,11 +57,10 @@ export const BranchedEditor = ({ docUrl, tool: Tool }: BranchedProps) => {
   }, [checkedOutDocHandle, highlightChanges, selectedBranch, checkedOutDoc]);
 
   const diffContext = useSubContext();
-  const context = useSharedContext();
 
   useEffect(() => {
-    context.replace(diffsOfDoc);
-  }, [context, diffsOfDoc]);
+    diffContext.replace(diffsOfDoc);
+  }, [diffContext, diffsOfDoc]);
 
   // create branches doc if it doesn't exist
   const shouldAddBranchesDocUrl = doc && doc.branchesDocUrl === undefined;

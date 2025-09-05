@@ -258,3 +258,9 @@ export class TextSpanRef<
     return new TextSpanRef(this.docHandle, this.path, this.from, this.to);
   }
 }
+
+export type TextSpanRefWith<Fields extends symbol> = TextSpanRef<
+  unknown,
+  unknown,
+  Fields
+>;

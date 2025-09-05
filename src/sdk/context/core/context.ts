@@ -53,7 +53,7 @@ export class Context {
     }
   }
 
-  refs(): Ref[] {
+  get refs(): Ref[] {
     const refsById = new Map<string, Ref>();
 
     this.#resolveAll(refsById);
@@ -81,7 +81,7 @@ export class Context {
   }
 
   refsWith<Type extends symbol>(field: FieldType<Type, any>) {
-    return this.refs().filter((ref) =>
+    return this.refs.filter((ref) =>
       ref.has(field)
     ) as unknown as RefWith<Type>[];
   }
@@ -105,11 +105,13 @@ export class Context {
   subcontext(): Context {
     const subcontext = new Context();
     subcontext.subscribe(this.#notify);
+    this.#subcontexts.add(subcontext);
     return subcontext;
   }
 
   remove(context: Context) {
     context.unsubscribe(this.#notify);
+    this.#subcontexts.delete(context);
   }
 }
 

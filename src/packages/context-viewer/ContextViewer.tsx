@@ -1,12 +1,11 @@
 import { useMemo, useState } from "react";
-import { useDerivedSharedContext } from "../../sdk/context/core/hooks";
 import { ToolProps } from "../../sdk/types";
 import { TextSpanRef, type Ref } from "../../sdk/context/core/refs";
+import { useSharedContextComputation } from "../../sdk/context/core/hooks";
 
-export const ContextViewer = (_props: ToolProps) => {
-  const { rows, refMap } = useDerivedSharedContext((context) => {
-    const dumpRows = context.dump();
-    const refs = context.getAll();
+export const ContextViewer = (props: ToolProps) => {
+  const { rows, refMap } = useSharedContextComputation((context) => {
+    const refs = context.refs;
     const map = new Map<string, Ref>();
     for (const ref of refs) {
       let key = (ref.path as any[]).join(".");
@@ -101,58 +100,6 @@ export const ContextViewer = (_props: ToolProps) => {
           </table>
         </div>
       </div>
-    </div>
-  );
-};
-
-const JsonPreview = ({ value }: { value: any }) => {
-  const [hover, setHover] = useState(false);
-
-  let isObject = false;
-  let oneLine = "";
-  try {
-    if (value === undefined) {
-      oneLine = "";
-    } else if (typeof value === "string") {
-      oneLine = value;
-    } else {
-      isObject = typeof value === "object" && value !== null;
-      oneLine = JSON.stringify(value);
-    }
-  } catch {
-    oneLine = String(value);
-  }
-
-  const max = 120;
-  const isTruncated = oneLine.length > max;
-  const preview = isTruncated ? oneLine.slice(0, max) + "…" : oneLine;
-  const showPopover = isObject && isTruncated;
-
-  let pretty = "";
-  if (showPopover) {
-    try {
-      pretty = JSON.stringify(value, null, 2);
-    } catch {
-      pretty = preview;
-    }
-  }
-
-  return (
-    <div
-      className="relative inline-block max-w-[28rem]"
-      onMouseEnter={() => setHover(true)}
-      onMouseLeave={() => setHover(false)}
-    >
-      <span className="font-mono text-xs text-gray-700 break-words">
-        {preview}
-      </span>
-      {showPopover && hover && (
-        <div className="absolute z-10 mt-1 p-2 bg-white border border-gray-200 rounded shadow-md max-w-[32rem]">
-          <pre className="font-mono text-xs text-gray-800 whitespace-pre-wrap break-words">
-            {pretty}
-          </pre>
-        </div>
-      )}
     </div>
   );
 };

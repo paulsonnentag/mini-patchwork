@@ -1,3 +1,20 @@
+import { DocHandle, DocumentId, Repo } from "@automerge/automerge-repo";
+import {
+  useDocHandle,
+  useDocument,
+  useRepo,
+} from "@automerge/automerge-repo-react-hooks";
+import { completionKeymap } from "@codemirror/autocomplete";
+import {
+  defaultKeymap,
+  history,
+  historyKeymap,
+  indentWithTab,
+} from "@codemirror/commands";
+import { markdown } from "@codemirror/lang-markdown";
+import { foldKeymap, indentOnInput, indentUnit } from "@codemirror/language";
+import { languages } from "@codemirror/language-data";
+import { searchKeymap } from "@codemirror/search";
 import { RangeSet } from "@codemirror/state";
 import {
   Decoration,
@@ -6,41 +23,30 @@ import {
   WidgetType,
   keymap,
 } from "@codemirror/view";
-import { markdown } from "@codemirror/lang-markdown";
-import { languages } from "@codemirror/language-data";
-import { completionKeymap } from "@codemirror/autocomplete";
-import {
-  defaultKeymap,
-  history,
-  historyKeymap,
-  indentWithTab,
-} from "@codemirror/commands";
-import { foldKeymap, indentOnInput, indentUnit } from "@codemirror/language";
-import { searchKeymap } from "@codemirror/search";
-import { useEffect, useMemo, useRef, useState } from "react";
-import { defineField } from "../../sdk/context/core/fields";
-import { Ref, PathRef, TextSpanRef } from "../../sdk/context/core/refs";
-import { useSharedContext } from "../../sdk/context/core/hooks";
-import { useSelection } from "../../sdk/context/selection";
-import { useStaticCallback } from "../../lib/useStaticCalback";
-import {
-  useDocHandle,
-  useDocument,
-  useRepo,
-} from "@automerge/automerge-repo-react-hooks";
-import { DocHandle, DocumentId, Repo } from "@automerge/automerge-repo";
-import { ToolProps } from "../../sdk/types";
-import { Codemirror } from "../../lib/codemirror";
-import { DiffValue, useGetDiffsAt } from "../../sdk/context/diff";
-import { useExtensionsAt } from "../../sdk/context/extensions";
-import { theme } from "./theme";
 import { MessageCircle } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Codemirror } from "../../lib/codemirror";
+import { useStaticCallback } from "../../lib/useStaticCalback";
+import { useSubContext } from "../../sdk/context/core/hooks";
+import {
+  PathRef,
+  Ref,
+  TextSpanRef,
+  TextSpanRefWith,
+} from "../../sdk/context/core/refs";
+import { Diff, DiffValue, useRefsWithDiffAt } from "../../sdk/context/diff";
+import {
+  Extension,
+  useRefsWithExtensionsAt,
+} from "../../sdk/context/extensions";
+import { Link } from "../../sdk/context/link";
+import { useSelection } from "../../sdk/context/selection";
+import { ToolProps } from "../../sdk/types";
+import { theme } from "./theme";
 
 export type MarkdownDoc = {
   content: string;
 };
-
-const Link = defineField<{ target: Ref }>("Link");
 
 const PATH = ["content"];
 
@@ -49,9 +55,6 @@ export const MarkdownEditor = ({ docUrl }: ToolProps) => {
   const [doc] = useDocument<MarkdownDoc>(docUrl);
   const handle = useDocHandle<MarkdownDoc>(docUrl);
   const { isSelected, setSelection, selectedObjRefs } = useSelection();
-  const context = useSharedContext();
-  const getDiffsAt = useGetDiffsAt();
-  const getExtensionsAt = useExtensionsAt();
   const cmContainerRef = useRef<HTMLDivElement | null>(null);
   const [cmView, setCmView] = useState<EditorView | null>(null);
   const selectionRangeRef = useRef<{ from: number; to: number } | null>(null);
@@ -66,15 +69,18 @@ export const MarkdownEditor = ({ docUrl }: ToolProps) => {
     return new PathRef(handle, ["content"]);
   }, [handle]);
 
-  const contentDiffs = getDiffsAt(contentRef);
+  const refsWithDiff = useRefsWithDiffAt(contentRef) as TextSpanRefWith<Diff>[];
+  const refsWithExtensions = useRefsWithExtensionsAt(
+    contentRef
+  ) as TextSpanRefWith<Extension>[];
 
   // parse links
-  const [linkedDocs, setLinkedDocs] = useState<LinkedDocs[]>([]);
+  const [docLinks, setDocLinks] = useState<TextSpanRefWith<Link>[]>([]);
   useEffect(() => {
     let isCanceled = false;
 
     if (!handle) {
-      setLinkedDocs([]);
+      setDocLinks([]);
       return;
     }
 
@@ -82,7 +88,7 @@ export const MarkdownEditor = ({ docUrl }: ToolProps) => {
       if (isCanceled) {
         return;
       }
-      setLinkedDocs(links);
+      setDocLinks(links);
     });
 
     return () => {
@@ -90,25 +96,11 @@ export const MarkdownEditor = ({ docUrl }: ToolProps) => {
     };
   }, [repo, handle, doc]);
 
-  //  add links and content to context
-  const content = doc?.content as string;
-  useEffect(
-    () =>
-      context.change((context) => {
-        linkedDocs.forEach((linkedDoc) => {
-          context.add(linkedDoc.docRef);
-          context.add(linkedDoc.linkRef).with(
-            Link({
-              target: linkedDoc.docRef,
-            })
-          );
-        });
+  const docLinksContext = useSubContext();
 
-        if (content && handle) {
-          context.add(new PathRef(handle, ["content"]));
-        }
-      }),
-    [linkedDocs, handle, content, context]
+  useEffect(
+    () => docLinksContext.replace(docLinks),
+    [docLinks, docLinksContext]
   );
 
   // compute decorations
@@ -116,70 +108,64 @@ export const MarkdownEditor = ({ docUrl }: ToolProps) => {
     return RangeSet.of<Decoration>(
       [
         // links
-        ...linkedDocs.map((linkedDoc) => {
+        ...docLinks.map((docLink) => {
           const isLinkSelected =
-            isSelected(linkedDoc.linkRef) || isSelected(linkedDoc.docRef);
+            isSelected(docLink) || isSelected(docLink.docRef);
 
           return Decoration.mark({
             class: isLinkSelected ? "bg-yellow-200" : "bg-yellow-100",
-          }).range(linkedDoc.linkRef.from, linkedDoc.linkRef.to);
+          }).range(docLink.from, docLink.to);
         }),
 
         // diff
-        ...contentDiffs.flatMap((annotation) => {
-          const diff = annotation.field as DiffValue<string>;
-          const textSpan = annotation.objRef as TextSpanRef;
+        ...refsWithDiff.flatMap((ref) => {
+          const diff = ref.get(Diff) as DiffValue<string>;
 
           if (diff.type === "deleted") {
             return makeDeleteDecoration({
               deletedText: diff.before,
-              isActive: isSelected(textSpan),
-            }).range(textSpan.from, textSpan.from);
+              isActive: isSelected(ref),
+            }).range(ref.from, ref.from);
           }
 
           if (diff.type === "added") {
             return Decoration.mark({
               class: `border-b border-green-300 ${
-                isSelected(textSpan) ? "bg-green-300" : "bg-green-100"
+                isSelected(ref) ? "bg-green-300" : "bg-green-100"
               }`,
-            }).range(textSpan.from, textSpan.to);
+            }).range(ref.from, ref.to);
           }
 
           return [];
         }),
 
         // extensions as widgets (before | after | replace)
-        ...getExtensionsAt(contentRef).flatMap((annotation) => {
-          const { field } = annotation;
-          const slot = (field.slot || "").toLowerCase();
-          if (!(annotation.objRef instanceof TextSpanRef)) return [];
+        ...refsWithExtensions.flatMap((ref) => {
+          const extension = ref.get(Extension);
+          const slot = (extension.slot || "").toLowerCase();
 
-          const from = annotation.objRef.from;
-          const to = annotation.objRef.to;
+          const from = ref.from;
+          const to = ref.to;
 
           if (slot === "before") {
-            return makeSlipDecoration({ text: field.value, side: -1 }).range(
-              from,
-              from
-            );
+            return makeTextSlipDecoration({
+              text: extension.value,
+              side: -1,
+            }).range(from, from);
           }
-          if (slot === "after") {
-            return makeSlipDecoration({ text: field.value, side: 1 }).range(
-              to,
-              to
-            );
-          }
+
           if (slot === "replace") {
             return Decoration.replace({
-              widget: new SlipWidget(field.value),
+              widget: new TextSlipWidget(extension.value),
               inclusive: true,
             }).range(from, to);
           }
+
           // default: render after
-          return makeSlipDecoration({ text: field.value, side: 1 }).range(
-            to,
-            to
-          );
+          return makeTextSlipDecoration({
+            text: extension.value,
+            side: 1,
+          }).range(to, to);
         }),
 
         // selection
@@ -201,11 +187,11 @@ export const MarkdownEditor = ({ docUrl }: ToolProps) => {
       true // sort ranges
     );
   }, [
-    linkedDocs,
-    isSelected,
-    contentDiffs,
+    docLinks,
+    refsWithDiff,
+    refsWithExtensions,
     selectedObjRefs,
-    getExtensionsAt,
+    isSelected,
     contentRef,
   ]);
 
@@ -215,12 +201,12 @@ export const MarkdownEditor = ({ docUrl }: ToolProps) => {
     }
 
     const selectedText = new TextSpanRef(handle, ["content"], from, to);
-    const overlappingLinks = linkedDocs.filter((linkedDoc) =>
-      selectedText.doesOverlap(linkedDoc.linkRef)
+    const overlappingLinks = docLinks.filter((docLink) =>
+      selectedText.doesOverlap(docLink)
     );
     const selectedObjects: Ref[] = [
       selectedText,
-      ...overlappingLinks.map((linkedDoc) => linkedDoc.docRef),
+      ...overlappingLinks.map((docLink) => docLink.docRef),
     ];
     setSelection(selectedObjects);
 
@@ -322,16 +308,11 @@ export const MarkdownEditor = ({ docUrl }: ToolProps) => {
   );
 };
 
-type LinkedDocs = {
-  linkRef: TextSpanRef;
-  docRef: Ref;
-};
-
 const parseMarkdownLinks = async (
   repo: Repo,
   handle: DocHandle<MarkdownDoc>
-): Promise<LinkedDocs[]> => {
-  const links: LinkedDocs[] = [];
+): Promise<TextSpanRefWith<Link>[]> => {
+  const docLinks: TextSpanRefWith<Link>[] = [];
   // Single regex to match markdown links with the specific pattern: [text](anything--documentId) or [text](anything--documentId?params)
   const regex = /\[([^\]]*)\]\(([^)]*)--([A-Za-z0-9_-]+)(\?[^)]*)?\)/g;
   const content = handle.doc().content;
@@ -345,13 +326,16 @@ const parseMarkdownLinks = async (
 
     const docHandle = await repo.find(documentId as DocumentId);
 
-    links.push({
-      linkRef: new TextSpanRef(handle, ["content"], from, to),
-      docRef: new PathRef(docHandle, []),
-    });
+    docLinks.push(
+      new TextSpanRef(handle, ["content"], from, to).with(
+        Link({
+          ref: new PathRef(docHandle, []),
+        })
+      ) as TextSpanRefWith<Link>
+    );
   }
 
-  return links;
+  return docLinks;
 };
 
 class DeletionMarker extends WidgetType {
@@ -428,7 +412,7 @@ const makeDeleteDecoration = ({
     side: 1,
   });
 
-class SlipWidget extends WidgetType {
+class TextSlipWidget extends WidgetType {
   text: string;
 
   constructor(text: string) {
@@ -454,7 +438,7 @@ class SlipWidget extends WidgetType {
     return box;
   }
 
-  eq(other: SlipWidget) {
+  eq(other: TextSlipWidget) {
     return other.text === this.text;
   }
 
@@ -463,8 +447,14 @@ class SlipWidget extends WidgetType {
   }
 }
 
-const makeSlipDecoration = ({ text, side }: { text: string; side: -1 | 1 }) =>
+const makeTextSlipDecoration = ({
+  text,
+  side,
+}: {
+  text: string;
+  side: -1 | 1;
+}) =>
   Decoration.widget({
-    widget: new SlipWidget(text),
+    widget: new TextSlipWidget(text),
     side,
   });

@@ -1,8 +1,8 @@
 import { useMemo } from "react";
 import { useSelection } from "../../sdk/context/selection";
 import { MapLibreMap, Marker } from "./lib/maplibre";
-import { useDerivedSharedContext } from "../../sdk/context/core/hooks";
 import { Ref } from "../../sdk/context/core/refs";
+import { useSharedContextComputation } from "../../sdk/context/core/hooks";
 
 type GeoPosition = {
   lat: number;
@@ -17,9 +17,9 @@ export type LocationDoc = {
 
 export const MapView = () => {
   const { isSelected, setSelection } = useSelection();
-  const objRefsWithLatLng = useDerivedSharedContext((context) => {
-    return context.getAll().filter((objRef): objRef is Ref<GeoPosition> => {
-      const value = objRef.value as any;
+  const objRefsWithLatLng = useSharedContextComputation((context) => {
+    return context.refs.filter((ref): ref is Ref<GeoPosition> => {
+      const value = ref.value as any;
       return (
         value && typeof value === "object" && "lat" in value && "lng" in value
       );

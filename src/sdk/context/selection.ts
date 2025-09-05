@@ -1,30 +1,27 @@
 import { useCallback } from "react";
 import { defineField } from "./core/fields";
-import { useDerivedSharedContext, useTransaction } from "./core/hooks";
+import { useSharedContextComputation, useSubContext } from "./core/hooks";
 import { Ref } from "./core/refs";
 
-const IsSelected = defineField<boolean>("IsSelected");
+const IsSelectedSymbol = Symbol("IsSelected");
+type IsSelected = typeof IsSelectedSymbol;
+const IsSelected = defineField<IsSelected, boolean>(
+  "IsSelected",
+  IsSelectedSymbol
+);
 
 export const useSelection = () => {
-  const transaction = useTransaction();
+  const selectionContext = useSubContext();
 
-  const selectedObjRefs = useDerivedSharedContext((context) =>
-    context
-      .getAllWith(IsSelected)
-      .flatMap((annotation) =>
-        annotation.get(IsSelected) === true ? annotation.objRef : []
-      )
+  const selectedObjRefs = useSharedContextComputation((context) =>
+    context.refsWith(IsSelected)
   );
 
   const setSelection = useCallback(
-    (objRefs: Ref[]) => {
-      transaction.change((add) => {
-        for (const objRef of objRefs) {
-          add(objRef.with(IsSelected(true)));
-        }
-      });
+    (refs: Ref[]) => {
+      selectionContext.replace(refs.map((ref) => ref.with(IsSelected(true))));
     },
-    [transaction]
+    [selectionContext]
   );
 
   const isSelected = useCallback(

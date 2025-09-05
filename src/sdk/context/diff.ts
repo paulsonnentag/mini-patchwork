@@ -160,11 +160,15 @@ export const getDiffOfDoc = (
 export const useDiff = (ref: Ref) =>
   useSharedContextComputation((context) => context.resolve(ref).get(Diff));
 
-export const useRefsWithDiffAt = (ref: Ref): RefWith<Diff>[] =>
-  useSharedContextComputation((context) =>
-    context
+export const useRefsWithDiffAt = (ref?: Ref): RefWith<Diff>[] =>
+  useSharedContextComputation((context) => {
+    if (!ref) {
+      return [];
+    }
+
+    return context
       .refsWith(Diff)
       .filter(
         (refWithDiff) => refWithDiff.isPartOf(ref) && !refWithDiff.isEqual(ref)
-      )
-  );
+      );
+  });

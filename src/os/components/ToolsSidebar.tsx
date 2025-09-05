@@ -75,7 +75,6 @@ export const ToolsSidebar = ({ docUrl }: ToolProps) => {
           tools={tools}
         />
         <div className="flex-1" />
-        <div className="text-xl">🍔</div>
       </div>
       {selectedTool && <selectedTool.component docUrl={docUrl} />}
     </div>

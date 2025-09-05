@@ -1,5 +1,6 @@
 export type FieldValue<Type extends symbol, Value> = {
   type: Type;
+  name: string;
   value: Value;
 };
 
@@ -15,7 +16,7 @@ export const defineField = <Type extends symbol, Value>(
 ): FieldType<Type, Value> => {
   return Object.assign(
     (value: Value): FieldValue<Type, Value> => {
-      return { value, type };
+      return { value, type, name: fieldName };
     },
     { fieldName, type }
   ) as FieldType<Type, Value>;

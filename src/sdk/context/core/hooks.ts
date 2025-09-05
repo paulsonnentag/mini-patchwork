@@ -1,4 +1,11 @@
-import { createContext, useContext, useEffect, useRef, useState } from "react";
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { Context } from "./context";
 
 export const SharedContext = createContext<Context | null>(null);
@@ -13,7 +20,21 @@ export const useSharedContext = () => {
   return context;
 };
 
-export const useDerivedSharedContext = <V>(
+export const useSubContext = () => {
+  const context = useSharedContext();
+
+  const subContext = useMemo(() => context.subcontext(), [context]);
+
+  useEffect(() => {
+    return () => {
+      context.remove(subContext);
+    };
+  }, [subContext, context]);
+
+  return subContext;
+};
+
+export const useSharedContextComputation = <V>(
   computation: (context: Context) => V
 ): V => {
   const context = useSharedContext();

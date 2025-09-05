@@ -3,7 +3,17 @@ import { DocHandle } from "@automerge/automerge-repo";
 import { lookup } from "../../../lib/lookup";
 import { FieldType, FieldValue } from "./fields";
 
-export abstract class Ref<Value = unknown, Doc = unknown> {
+export const $fields = Symbol("fields");
+
+export type RefWith<Fields extends symbol> = Ref<unknown, unknown, Fields>;
+
+export abstract class Ref<
+  Value = unknown,
+  Doc = unknown,
+  Fields extends symbol = never
+> {
+  [$fields] = new Map<symbol, any>();
+
   protected readonly docHandle: DocHandle<Doc>;
   readonly path: Automerge.Prop[];
 
@@ -12,9 +22,17 @@ export abstract class Ref<Value = unknown, Doc = unknown> {
     this.path = path;
   }
 
+  // ==== methods to implement in subclasses ====
+
+  abstract toId(): string;
+
+  protected abstract resolve(doc: Doc): Value;
+
+  abstract clone(): Ref<Value, Doc, Fields>;
+
   // ==== value methods ====
 
-  get value() {
+  get value(): Value {
     return this.resolve(this.docHandle.doc());
   }
 
@@ -28,8 +46,8 @@ export abstract class Ref<Value = unknown, Doc = unknown> {
     return new TextSpanRef(this.docHandle, this.path, from, to);
   }
 
-  get docRef(): Ref<Doc, Doc> {
-    return new PathRef(this.docHandle, []) as Ref<Doc, Doc>;
+  get docRef(): Ref<Doc, Doc, Fields> {
+    return new PathRef(this.docHandle, []); // maybe we should have a doc ref as a separate class?
   }
 
   // ==== mutation methods ====
@@ -46,8 +64,12 @@ export abstract class Ref<Value = unknown, Doc = unknown> {
 
   // ==== ref arithmetic methods ====
 
-  doesOverlap(other: Ref) {
+  isEqual(other: Ref) {
     return this.toId() === other.toId();
+  }
+
+  doesOverlap(other: Ref) {
+    return this === other;
   }
 
   isPartOf(other: Ref) {
@@ -69,70 +91,40 @@ export abstract class Ref<Value = unknown, Doc = unknown> {
 
   // ==== field methods ====
 
-  with<Type extends symbol, Value>(field: FieldValue<Type, Value>) {
-    return new RefWithFields(this).with(field) as RefWithFields<Type, Ref>;
+  with<Type extends symbol, Value>(
+    field: FieldValue<Type, Value>
+  ): Ref<Value, Doc, Fields | Type> {
+    const clone = this.clone();
+    clone[$fields] = new Map(this[$fields]);
+    clone[$fields].set(field.type, field.value);
+
+    return clone as unknown as Ref<Value, Doc, Fields | Type>;
   }
 
-  // should only be used by context
-  withFields<Fields extends symbol = never>(
-    fields: Map<symbol, any>
-  ): RefWithFields<Fields, Ref<Value, Doc>> {
-    return new RefWithFields(this, fields) as RefWithFields<
-      Fields,
-      Ref<Value, Doc>
-    >;
-  }
-
-  // ==== methods to implement in subclasses ====
-
-  abstract toId(): string;
-
-  protected abstract resolve(doc: Doc): Value | undefined;
-}
-
-export class RefWithFields<Fields extends symbol = never, R extends Ref = Ref> {
-  #fields: Map<symbol, any>;
-
-  constructor(readonly ref: R, fields?: Map<symbol, any>) {
-    this.#fields = fields ?? new Map();
-  }
-
-  get<Type extends symbol, Value>(
-    field: FieldType<Type, Value>
-  ): Type extends Fields ? Value : Value | undefined {
-    return this.#fields.get(field.type) as Value;
+  get<Type extends symbol, Value>(field: FieldType<Type, Value>) {
+    return this[$fields].get(field.type) as Type extends Fields
+      ? Value
+      : Value | undefined;
   }
 
   has<Type extends symbol, Value>(field: FieldType<Type, Value>) {
-    return this.#fields.has(field.type) as Type extends Fields ? true : boolean;
-  }
-
-  with<Type extends symbol, Value>(field: FieldValue<Type, Value>) {
-    const fields = new Map(this.#fields);
-
-    fields.set(field.type, field.value);
-
-    return new RefWithFields(this.ref, fields) as RefWithFields<
-      Fields | Type,
-      R
-    >;
-  }
-
-  // should be only used by context
-  get fields(): [symbol, any][] {
-    return Array.from(this.#fields.entries());
+    return this[$fields].has(field.type) as Type extends Fields
+      ? true
+      : boolean;
   }
 }
 
-export class PathRef<Value = unknown, Doc = unknown> extends Ref<Value, Doc> {
+export class PathRef<
+  Value = unknown,
+  Doc = unknown,
+  Fields extends symbol = never
+> extends Ref<Value, Doc, Fields> {
   constructor(docHandle: DocHandle<Doc>, path: Automerge.Prop[]) {
     super(docHandle, path);
-
-    return addToCachOrGetCachedRef(this);
   }
 
-  protected resolve(doc: Automerge.Doc<Doc>): Value | undefined {
-    return lookup(doc, this.path);
+  protected resolve(doc: Automerge.Doc<Doc>): Value {
+    return lookup(doc, this.path) as Value;
   }
 
   toId(): string {
@@ -140,9 +132,17 @@ export class PathRef<Value = unknown, Doc = unknown> extends Ref<Value, Doc> {
     const path = JSON.stringify(this.path);
     return `${url}:${path}`;
   }
+
+  clone(): Ref<Value, Doc, Fields> {
+    return new PathRef(this.docHandle, this.path);
+  }
 }
 
-export class IdRef<Value = unknown, Doc = unknown> extends Ref<Value, Doc> {
+export class IdRef<Value, Doc, Fields extends symbol = never> extends Ref<
+  Value,
+  Doc,
+  Fields
+> {
   #id: any;
   #key: Automerge.Prop;
 
@@ -155,24 +155,27 @@ export class IdRef<Value = unknown, Doc = unknown> extends Ref<Value, Doc> {
     super(docHandle, path);
     this.#id = id;
     this.#key = key;
-
-    return addToCachOrGetCachedRef(this);
   }
 
-  protected resolve(doc: Automerge.Doc<Doc>): Value | undefined {
+  protected resolve(doc: Automerge.Doc<Doc>): Value {
     const objects = lookup(doc, this.path);
-    if (!objects) {
-      return undefined;
-    }
-    return objects.find((obj: any) => obj[this.#key] === this.#id);
+    return objects.find((obj: any) => obj[this.#key] === this.#id) as Value;
   }
 
   toId(): string {
     return this.#id;
   }
+
+  clone(): Ref<Value, Doc, Fields> {
+    return new IdRef(this.docHandle, this.path, this.#id, this.#key);
+  }
 }
 
-export class TextSpanRef<Doc = unknown> extends Ref<string, Doc> {
+export class TextSpanRef<
+  Value = string,
+  Doc = unknown,
+  Fields extends symbol = never
+> extends Ref<Value, Doc, Fields> {
   #fromCursor: Automerge.Cursor;
   #toCursor: Automerge.Cursor;
 
@@ -184,11 +187,9 @@ export class TextSpanRef<Doc = unknown> extends Ref<string, Doc> {
   ) {
     super(docHandle, path);
 
-    const doc = this.docHandle.doc();
+    const doc = docHandle.doc();
     this.#fromCursor = Automerge.getCursor(doc, path, from);
     this.#toCursor = Automerge.getCursor(doc, path, to);
-
-    return addToCachOrGetCachedRef(this);
   }
 
   get from() {
@@ -207,11 +208,11 @@ export class TextSpanRef<Doc = unknown> extends Ref<string, Doc> {
     );
   }
 
-  protected resolve(doc: Automerge.Doc<Doc>): string | undefined {
+  protected resolve(doc: Automerge.Doc<Doc>): Value {
     const from = Automerge.getCursorPosition(doc, this.path, this.#fromCursor);
     const to = Automerge.getCursorPosition(doc, this.path, this.#toCursor);
 
-    return lookup<string>(doc, this.path)!.slice(from, to);
+    return lookup<string>(doc, this.path)!.slice(from, to) as Value;
   }
 
   toId(): string {
@@ -249,36 +250,11 @@ export class TextSpanRef<Doc = unknown> extends Ref<string, Doc> {
 
   // todo: figure out what to do here
   // we could implement a mutable string here but that feels bad
-  change(fn: (obj: string) => void): void {
+  change(fn: (obj: Value) => void): void {
     throw new Error("not implemented");
   }
-}
 
-// REF CACHING
-
-// we can't use a weak map because we need to index by string
-// weak maps hold a weak reference to the key not the value
-
-const REFS_BY_ID = new Map<string, Ref>();
-
-// in order to avoid memory leaks we use a finalization registry
-// the callback is called when the ref is garbage collected
-const refRegistry = new FinalizationRegistry((id: string) => {
-  REFS_BY_ID.delete(id);
-});
-
-// todo: Ideally we would handle the caching logic in the constructor of Ref
-// unfortunately it's not possible from the parent constructor to affect
-// what value is returned in the child class.
-// As a workaround we have this helper function that each sub class of Ref should call and return it's result
-const addToCachOrGetCachedRef = <T extends Ref>(ref: T): T => {
-  const cachedRef = REFS_BY_ID.get(ref.toId());
-
-  if (cachedRef) {
-    return cachedRef as T;
+  clone(): Ref<Value, Doc, Fields> {
+    return new TextSpanRef(this.docHandle, this.path, this.from, this.to);
   }
-
-  REFS_BY_ID.set(ref.toId(), ref);
-  refRegistry.register(ref, ref.toId());
-  return ref;
-};
+}

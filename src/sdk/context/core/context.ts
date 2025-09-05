@@ -1,89 +1,89 @@
 import { deepEqual } from "../../../lib/deepEqual";
 import { FieldType } from "./fields";
-import { Ref, RefWithFields } from "./refs";
-
-type FieldsByRef = Map<Ref, Map<symbol, any>>;
-
+import { Ref, RefWith } from "./refs";
+import { $fields } from "./refs";
 export class Context {
   #subscribers = new Set<() => void>();
-  #fieldsByRef: FieldsByRef = new Map();
+  #refsById: Map<string, Ref> = new Map();
   #subcontexts = new Set<Context>();
 
   // ==== mutation methods ====
 
-  add(ref: Ref | Ref[] | RefWithFields | RefWithFields[]) {
-    addTo(this.#fieldsByRef, ref);
+  add(ref: Ref | Ref[]) {
+    addTo(this.#refsById, ref);
     this.#notify();
   }
 
-  replace(ref: Ref | Ref[] | RefWithFields | RefWithFields[]) {
-    const newFieldsByRef = new Map<Ref, Map<symbol, any>>();
-    addTo(newFieldsByRef, ref);
+  replace(ref: Ref | Ref[]) {
+    const newRefsById = new Map<string, Ref>();
+    addTo(newRefsById, ref);
 
-    if (isEqual(this.#fieldsByRef, newFieldsByRef)) {
+    if (isEqual(this.#refsById, newRefsById)) {
       return;
     }
 
-    this.#fieldsByRef = newFieldsByRef;
+    this.#refsById = newRefsById;
     this.#notify();
   }
 
   // ==== query methods ====
 
-  resolve(ref: Ref): RefWithFields {
+  resolve(ref: Ref): Ref {
+    const clone = ref.clone();
+
     const fields = new Map<symbol, any>();
-    this.#resolveFields(ref, fields);
+    clone[$fields] = fields;
 
-    return ref.withFields(fields);
+    this.#resolveRef(clone);
+
+    return clone;
   }
 
-  #resolveFields(ref: Ref, combinedFields: Map<symbol, any>) {
-    const fields = this.#fieldsByRef.get(ref);
-    if (!fields) {
-      return;
-    }
+  #resolveRef(ref: Ref) {
+    const storedRef = this.#refsById.get(ref.toId());
 
-    for (const [key, value] of fields.entries()) {
-      combinedFields.set(key, value);
-    }
-
-    for (const context of this.#subcontexts) {
-      context.#resolveFields(ref, combinedFields);
-    }
-  }
-
-  getAll(): RefWithFields[] {
-    const fieldsByRef = new Map<Ref, Map<symbol, any>>();
-
-    this.#resolveAll(fieldsByRef);
-
-    return Array.from(fieldsByRef.entries()).map(([ref, fields]) =>
-      ref.withFields(fields)
-    );
-  }
-
-  #resolveAll(fieldsByRef: Map<Ref, Map<symbol, any>>) {
-    for (const [ref, fields] of this.#fieldsByRef.entries()) {
-      let combinedFields = fieldsByRef.get(ref);
-      if (!combinedFields) {
-        combinedFields = new Map();
-        fieldsByRef.set(ref, combinedFields);
-      }
-
-      for (const [key, value] of fields.entries()) {
-        combinedFields.set(key, value);
+    if (storedRef) {
+      for (const [key, value] of storedRef[$fields].entries()) {
+        ref[$fields].set(key, value);
       }
     }
 
     for (const context of this.#subcontexts) {
-      context.#resolveAll(fieldsByRef);
+      context.#resolveRef(ref);
     }
   }
 
-  getAllWith<Type extends symbol>(field: FieldType<Type, any>) {
-    return this.getAll().filter((ref) =>
+  refs(): Ref[] {
+    const refsById = new Map<string, Ref>();
+
+    this.#resolveAll(refsById);
+
+    return Array.from(refsById.values());
+  }
+
+  #resolveAll(refsById: Map<string, Ref>) {
+    for (const ref of this.#refsById.values()) {
+      const id = ref.toId();
+      let resolvedRef = refsById.get(id);
+      if (!resolvedRef) {
+        resolvedRef = ref.clone();
+        refsById.set(id, resolvedRef);
+      }
+
+      for (const [key, value] of ref[$fields].entries()) {
+        resolvedRef[$fields].set(key, value);
+      }
+    }
+
+    for (const context of this.#subcontexts) {
+      context.#resolveAll(refsById);
+    }
+  }
+
+  refsWith<Type extends symbol>(field: FieldType<Type, any>) {
+    return this.refs().filter((ref) =>
       ref.has(field)
-    ) as unknown as RefWithFields<Type>[];
+    ) as unknown as RefWith<Type>[];
   }
 
   // ==== subscription methods ====
@@ -113,44 +113,51 @@ export class Context {
   }
 }
 
-const addTo = (
-  fieldsByRef: Map<Ref, Map<symbol, any>>,
-  ref: Ref | Ref[] | RefWithFields | RefWithFields[]
-) => {
-  if (ref instanceof Ref) {
-    if (!fieldsByRef.has(ref)) {
-      fieldsByRef.set(ref, new Map());
-    }
-  } else if (ref instanceof RefWithFields) {
-    let fields = fieldsByRef.get(ref.ref);
-    if (!fields) {
-      fields = new Map();
-      fieldsByRef.set(ref.ref, fields);
-    }
-
-    for (const [fieldType, fieldValue] of ref.fields) {
-      fields.set(fieldType, fieldValue);
-    }
-  } else if (Array.isArray(ref)) {
+const addTo = (refsById: Map<string, Ref>, ref: Ref | Ref[]) => {
+  if (Array.isArray(ref)) {
     for (const item of ref) {
-      addTo(fieldsByRef, item);
+      addTo(refsById, item);
     }
+    return;
+  }
+
+  let storedRef = refsById.get(ref.toId());
+  if (!storedRef) {
+    storedRef = ref.clone();
+    refsById.set(ref.toId(), storedRef);
+  }
+
+  for (const [key, value] of ref[$fields].entries()) {
+    storedRef[$fields].set(key, value);
   }
 };
 
-const isEqual = (a: FieldsByRef, b: FieldsByRef) => {
+const isEqual = (a: Map<string, Ref>, b: Map<string, Ref>) => {
   if (a.size !== b.size) {
     return false;
   }
 
-  for (const [ref, fieldsA] of a.entries()) {
-    const fieldsB = b.get(ref);
-    if (!fieldsB || fieldsA.size !== fieldsB.size) {
+  for (const refA of a.values()) {
+    const refB = b.get(refA.toId());
+
+    if (!refB) {
       return false;
     }
 
-    for (const [fieldType, fieldValueA] of fieldsA.entries()) {
-      const fieldValueB = fieldsB.get(fieldType);
+    const fieldsA = refA[$fields];
+    const fieldsB = refB[$fields];
+
+    if (fieldsA.size !== fieldsB.size) {
+      return false;
+    }
+
+    for (const [fieldTypeA, fieldValueA] of fieldsA.entries()) {
+      const fieldValueB = fieldsB.get(fieldTypeA);
+
+      if (!fieldValueB) {
+        return false;
+      }
+
       if (!deepEqual(fieldValueA, fieldValueB)) {
         return false;
       }

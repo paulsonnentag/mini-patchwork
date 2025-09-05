@@ -3,8 +3,8 @@ import { DocHandle } from "@automerge/automerge-repo";
 import { last } from "../../lib/last";
 import { lookup } from "../../lib/lookup";
 import { defineField } from "./core/fields";
-import { useDerivedSharedContext } from "./core/hooks";
-import { PathRef, Ref, RefWithFields, TextSpanRef } from "./core/refs";
+import { useSharedContextComputation } from "./core/hooks";
+import { PathRef, Ref, RefWith, TextSpanRef } from "./core/refs";
 
 type AddedDiff = {
   type: "added";
@@ -32,8 +32,8 @@ export const Diff = defineField<Diff, DiffValue>("diff", DiffSymbol);
 export const getDiffOfDoc = (
   docHandle?: DocHandle<unknown>,
   headsBefore?: Automerge.Heads
-): RefWithFields<Diff>[] => {
-  const changedRefs: RefWithFields<Diff>[] = [];
+): RefWith<Diff>[] => {
+  const changedRefs: RefWith<Diff>[] = [];
 
   if (!headsBefore || !docHandle) {
     return [];
@@ -158,14 +158,13 @@ export const getDiffOfDoc = (
 };
 
 export const useDiff = (ref: Ref) =>
-  useDerivedSharedContext((context) => context.resolve(ref).get(Diff));
+  useSharedContextComputation((context) => context.resolve(ref).get(Diff));
 
-export const useChangedRefsAt = (ref: Ref): RefWithFields<Diff>[] =>
-  useDerivedSharedContext((context) =>
+export const useRefsWithDiffAt = (ref: Ref): RefWith<Diff>[] =>
+  useSharedContextComputation((context) =>
     context
-      .getAllWith(Diff)
+      .refsWith(Diff)
       .filter(
-        (changedPart) =>
-          changedPart.ref.isPartOf(ref) && changedPart.ref !== ref
+        (refWithDiff) => refWithDiff.isPartOf(ref) && !refWithDiff.isEqual(ref)
       )
   );

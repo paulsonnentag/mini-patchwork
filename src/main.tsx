@@ -15,6 +15,8 @@ const repo = new Repo({
 
 const context = new Context();
 
+(window as any).$context = context;
+
 ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
   <RepoContext.Provider value={repo}>
     <SharedContext.Provider value={context}>

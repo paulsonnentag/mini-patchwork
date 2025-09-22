@@ -1,5 +1,5 @@
-import { defineField } from "./core/fields";
-import { Ref } from "./core/refs";
+import { defineField } from "./context/fields";
+import { Ref } from "./context/refs";
 
 type LinkValue = {
   ref: Ref;

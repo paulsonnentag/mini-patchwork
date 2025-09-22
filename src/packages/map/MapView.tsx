@@ -1,8 +1,9 @@
-import { useEffect, useMemo } from "react";
-import { useSelection } from "../../sdk/context/selection";
+import { useCallback, useMemo } from "react";
+import { Ref } from "../../sdk/context/refs";
+import { SelectionAPI } from "../../sdk/selection";
 import { MapLibreMap, Marker } from "./lib/maplibre";
-import { Ref } from "../../sdk/context/core/refs";
-import { useSharedContextComputation } from "../../sdk/context/core/hooks";
+import { useReactive } from "../../sdk/reactive/react";
+import { contextComputation } from "../../sdk/context/computation";
 
 type GeoPosition = {
   lat: number;
@@ -16,15 +17,8 @@ export type LocationDoc = {
 };
 
 export const MapView = () => {
-  const { isSelected, setSelection, selectedObjRefs } = useSelection();
-  const refsWithLatLng = useSharedContextComputation((context) => {
-    return context.refs.filter((ref): ref is Ref<GeoPosition> => {
-      const value = ref.value as any;
-      return (
-        value && typeof value === "object" && "lat" in value && "lng" in value
-      );
-    });
-  });
+  const { isSelected, setSelection } = useReactive(SelectionAPI);
+  const refsWithLatLng = useReactive(RefsWithLatLng);
 
   const markers = useMemo<Marker[]>(
     () =>
@@ -54,3 +48,13 @@ export const MapView = () => {
     </div>
   );
 };
+
+const RefsWithLatLng = () =>
+  contextComputation((context) =>
+    context.refs.filter((ref): ref is Ref<GeoPosition> => {
+      const value = ref.value as any;
+      return (
+        value && typeof value === "object" && "lat" in value && "lng" in value
+      );
+    })
+  );

@@ -1,9 +1,12 @@
-import { useSharedContextComputation } from "../../sdk/context/core/hooks";
-import { Ref, TextSpanRef } from "../../sdk/context/core/refs";
+import { useReactive } from "../../sdk/reactive/react";
+import { Ref, TextSpanRef } from "../../sdk/context/refs";
 import { ToolProps } from "../../sdk/types";
+import { contextComputation } from "../../sdk/context/computation";
+
+const Refs = () => contextComputation((context) => context.refs);
 
 export const ContextViewer = (props: ToolProps) => {
-  const refs = useSharedContextComputation((context) => context.refs);
+  const refs = useReactive(Refs);
 
   // Sort refs by refToString
   const sortedRefs = refs.slice().sort((a, b) => {

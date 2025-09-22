@@ -1,7 +1,8 @@
-import { deepEqual } from "../../../lib/deepEqual";
+import { deepEqual } from "../../lib/deepEqual";
 import { FieldType } from "./fields";
 import { Ref, RefWith } from "./refs";
 import { $fields } from "./refs";
+
 export class Context {
   #subscribers = new Set<() => void>();
   #refsById: Map<string, Ref> = new Map();

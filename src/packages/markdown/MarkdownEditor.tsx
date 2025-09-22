@@ -27,22 +27,23 @@ import { MessageCircle } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Codemirror } from "../../lib/codemirror";
 import { useStaticCallback } from "../../lib/useStaticCalback";
-import { useSubContext } from "../../sdk/context/core/hooks";
 import {
   PathRef,
   Ref,
   TextSpanRef,
   TextSpanRefWith,
-} from "../../sdk/context/core/refs";
-import { Diff, DiffValue, useRefsWithDiffAt } from "../../sdk/context/diff";
-import {
-  Extension,
-  useRefsWithExtensionsAt,
-} from "../../sdk/context/extensions";
-import { Link } from "../../sdk/context/link";
-import { useSelection } from "../../sdk/context/selection";
+} from "../../sdk/context/refs";
+import { Diff, DiffValue, getRefsWithDiffAt } from "../../sdk/diff";
+// import {
+//   Extension,
+//   useRefsWithExtensionsAt,
+// } from "../../sdk/extensions";
+import { Link } from "../../sdk/link";
+import { SelectionAPI } from "../../sdk/selection";
 import { ToolProps } from "../../sdk/types";
 import { theme } from "./theme";
+import { useReactive } from "../../sdk/reactive/react";
+import { useSubcontext } from "../../sdk/context/react";
 
 export type MarkdownDoc = {
   content: string;
@@ -54,7 +55,7 @@ export const MarkdownEditor = ({ docUrl }: ToolProps) => {
   const repo = useRepo();
   const [doc] = useDocument<MarkdownDoc>(docUrl);
   const handle = useDocHandle<MarkdownDoc>(docUrl);
-  const { isSelected, setSelection, selectedObjRefs } = useSelection();
+  const { isSelected, setSelection, selectedRefs } = useReactive(SelectionAPI);
   const cmContainerRef = useRef<HTMLDivElement | null>(null);
   const [cmView, setCmView] = useState<EditorView | null>(null);
   const selectionRangeRef = useRef<{ from: number; to: number } | null>(null);
@@ -93,7 +94,7 @@ export const MarkdownEditor = ({ docUrl }: ToolProps) => {
     };
   }, [repo, handle, doc]);
 
-  const docLinksContext = useSubContext();
+  const docLinksContext = useSubcontext();
 
   useEffect(
     () =>
@@ -103,11 +104,13 @@ export const MarkdownEditor = ({ docUrl }: ToolProps) => {
     [docLinks, docLinksContext]
   );
 
-  const refsWithExtensions = useRefsWithExtensionsAt(
-    contentRef
-  ) as TextSpanRefWith<Extension>[];
+  // const refsWithExtensions = (
+  //   contentRef
+  // ) as TextSpanRefWith<Extension>[];
 
-  const refsWithDiff = useRefsWithDiffAt(contentRef) as TextSpanRefWith<Diff>[];
+  const refsWithDiff = useReactive(
+    getRefsWithDiffAt(contentRef)
+  ) as TextSpanRefWith<Diff>[];
 
   // compute decorations
   const decorations = useMemo<DecorationSet>(() => {
@@ -146,60 +149,53 @@ export const MarkdownEditor = ({ docUrl }: ToolProps) => {
         }),
 
         // extensions as widgets (before | after | replace)
-        ...refsWithExtensions.flatMap((ref) => {
-          const extension = ref.get(Extension);
-          const slot = (extension.slot || "").toLowerCase();
+        // ...refsWithExtensions.flatMap((ref) => {
+        //   const extension = ref.get(Extension);
+        //   const slot = (extension.slot || "").toLowerCase();
 
-          const from = ref.from;
-          const to = ref.to;
+        //   const from = ref.from;
+        //   const to = ref.to;
 
-          if (slot === "before") {
-            return makeTextSlipDecoration({
-              text: extension.value,
-              side: -1,
-            }).range(from, from);
-          }
+        //   if (slot === "before") {
+        //     return makeTextSlipDecoration({
+        //       text: extension.value,
+        //       side: -1,
+        //     }).range(from, from);
+        //   }
 
-          if (slot === "replace") {
-            return Decoration.replace({
-              widget: new TextSlipWidget(extension.value),
-              inclusive: true,
-            }).range(from, to);
-          }
+        //   if (slot === "replace") {
+        //     return Decoration.replace({
+        //       widget: new TextSlipWidget(extension.value),
+        //       inclusive: true,
+        //     }).range(from, to);
+        //   }
 
-          // default: render after
-          return makeTextSlipDecoration({
-            text: extension.value,
-            side: 1,
-          }).range(to, to);
-        }),
+        //   // default: render after
+        //   return makeTextSlipDecoration({
+        //     text: extension.value,
+        //     side: 1,
+        //   }).range(to, to);
+        // }),
 
         // selection
-        ...selectedObjRefs.flatMap((selectedObjRef) => {
+        ...selectedRefs.flatMap((selectedRef) => {
           if (
-            !(selectedObjRef instanceof TextSpanRef) ||
+            !(selectedRef instanceof TextSpanRef) ||
             !contentRef ||
-            !selectedObjRef.isPartOf(contentRef) ||
-            selectedObjRef.from === selectedObjRef.to
+            !selectedRef.isPartOf(contentRef) ||
+            selectedRef.from === selectedRef.to
           ) {
             return [];
           }
 
           return Decoration.mark({
             class: "bg-blue-200",
-          }).range(selectedObjRef.from, selectedObjRef.to);
+          }).range(selectedRef.from, selectedRef.to);
         }),
       ],
       true // sort ranges
     );
-  }, [
-    docLinks,
-    refsWithDiff,
-    refsWithExtensions,
-    selectedObjRefs,
-    isSelected,
-    contentRef,
-  ]);
+  }, [docLinks, refsWithDiff, selectedRefs, isSelected, contentRef]);
 
   const onChangeSelection = useStaticCallback((from: number, to: number) => {
     if (!handle) {

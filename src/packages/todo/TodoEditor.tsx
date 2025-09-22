@@ -4,9 +4,10 @@ import {
 } from "@automerge/automerge-repo-react-hooks";
 import { useState } from "react";
 import { classNames } from "../../lib/classNames";
-import { PathRef, Ref } from "../../sdk/context/core/refs";
-import { useDiff } from "../../sdk/context/diff";
+import { PathRef, Ref } from "../../sdk/context/refs";
+import { getDiff } from "../../sdk/diff";
 import { ToolProps } from "../../sdk/types";
+import { useReactive } from "../../sdk/reactive/react";
 
 type Todo = {
   id: string;
@@ -84,7 +85,8 @@ type TodoItemProps = {
 
 const TodoItem = ({ todoRef }: TodoItemProps) => {
   const todo = todoRef.value;
-  const diff = useDiff(todoRef);
+
+  const diff = useReactive(getDiff(todoRef));
 
   const onToogle = () => {
     todoRef.change((todo) => {

@@ -5,22 +5,17 @@ import { IndexedDBStorageAdapter } from "@automerge/automerge-repo-storage-index
 import ReactDOM from "react-dom/client";
 import "./index.css";
 import { Frame } from "./os/components/Frame";
-import { SharedContext } from "./sdk/context/core/hooks";
-import { Context } from "./sdk/context/core/context";
+import { CONTEXT } from "./sdk/context";
 
 const repo = new Repo({
   network: [new BrowserWebSocketClientAdapter("wss://sync3.automerge.org")],
   storage: new IndexedDBStorageAdapter(),
 });
 
-const context = new Context();
-
-(window as any).$context = context;
+(window as any).$context = CONTEXT;
 
 ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
   <RepoContext.Provider value={repo}>
-    <SharedContext.Provider value={context}>
-      <Frame />
-    </SharedContext.Provider>
+    <Frame />
   </RepoContext.Provider>
 );

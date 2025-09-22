@@ -6,10 +6,10 @@ import {
   useRepo,
 } from "@automerge/automerge-repo-react-hooks";
 import { startTransition, useEffect, useMemo, useState } from "react";
-import { useSubContext } from "../../sdk/context/core/hooks";
-import { PathRef, RefWith } from "../../sdk/context/core/refs";
-import { Diff, getDiffOfDoc } from "../../sdk/context/diff";
+import { PathRef, RefWith } from "../../sdk/context/refs";
+import { Diff, getDiffOfDoc } from "../../sdk/diff";
 import { ToolProps } from "../../sdk/types";
+import { useSubcontext } from "../../sdk/context/react";
 
 type BranchedProps = ToolProps & {
   docUrl: string;
@@ -41,7 +41,7 @@ export const BranchedEditor = ({ docUrl, tool: Tool }: BranchedProps) => {
   const checkedOutDocHandle = useDocHandle(checkedOutDocUrl);
   const checkedOutDoc = useDocument(checkedOutDocUrl);
 
-  const currentDocContext = useSubContext();
+  const currentDocContext = useSubcontext();
 
   useEffect(() => {
     if (!docHandle || !doc) {
@@ -68,7 +68,7 @@ export const BranchedEditor = ({ docUrl, tool: Tool }: BranchedProps) => {
     );
   }, [checkedOutDocHandle, highlightChanges, selectedBranch, checkedOutDoc]);
 
-  const diffContext = useSubContext();
+  const diffContext = useSubcontext();
 
   useEffect(() => {
     diffContext.replace(diffsOfDoc);

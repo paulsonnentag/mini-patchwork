@@ -1,10 +1,12 @@
 import * as Automerge from "@automerge/automerge";
 import { DocHandle } from "@automerge/automerge-repo";
-import { last } from "../../lib/last";
-import { lookup } from "../../lib/lookup";
-import { defineField } from "./core/fields";
-import { useSharedContextComputation } from "./core/hooks";
-import { PathRef, Ref, RefWith, TextSpanRef } from "./core/refs";
+import { last } from "../lib/last";
+import { lookup } from "../lib/lookup";
+import { memoize } from "../lib/memoize";
+import { CONTEXT } from "./context";
+import { contextComputation } from "./context/computation";
+import { defineField } from "./context/fields";
+import { PathRef, Ref, RefWith, TextSpanRef } from "./context/refs";
 
 type AddedDiff = {
   type: "added";
@@ -157,18 +159,21 @@ export const getDiffOfDoc = (
   return changedRefs;
 };
 
-export const useDiff = (ref: Ref) =>
-  useSharedContextComputation((context) => context.resolve(ref).get(Diff));
+export const getDiff = memoize(
+  (ref: Ref) => contextComputation(() => CONTEXT.resolve(ref).get(Diff)),
+  (ref: Ref) => ref.toId()
+);
 
-export const useRefsWithDiffAt = (ref?: Ref): RefWith<Diff>[] =>
-  useSharedContextComputation((context) => {
-    if (!ref) {
-      return [];
-    }
+export const getRefsWithDiffAt = memoize(
+  (ref?: Ref) =>
+    contextComputation(() => {
+      if (!ref) {
+        return [];
+      }
 
-    return context
-      .refsWith(Diff)
-      .filter(
+      return CONTEXT.refsWith(Diff).filter(
         (refWithDiff) => refWithDiff.isPartOf(ref) && !refWithDiff.isEqual(ref)
       );
-  });
+    }),
+  (ref?: Ref) => ref?.toId()
+);

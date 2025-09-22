@@ -63,16 +63,13 @@ export const MarkdownEditor = ({ docUrl }: ToolProps) => {
   // todo:  another weird doc handle issue
 
   const contentRef = useMemo(() => {
+    // ignore hack
     if (!handle || (handle.doc() as any)["@patchwork"]?.type !== "markdown") {
       return undefined;
     }
+
     return new PathRef(handle, ["content"]);
   }, [handle]);
-
-  const refsWithDiff = useRefsWithDiffAt(contentRef) as TextSpanRefWith<Diff>[];
-  const refsWithExtensions = useRefsWithExtensionsAt(
-    contentRef
-  ) as TextSpanRefWith<Extension>[];
 
   // parse links
   const [docLinks, setDocLinks] = useState<TextSpanRefWith<Link>[]>([]);
@@ -99,9 +96,18 @@ export const MarkdownEditor = ({ docUrl }: ToolProps) => {
   const docLinksContext = useSubContext();
 
   useEffect(
-    () => docLinksContext.replace(docLinks),
+    () =>
+      docLinksContext.replace(
+        docLinks.flatMap((docLink) => [docLink, docLink.get(Link).ref])
+      ),
     [docLinks, docLinksContext]
   );
+
+  const refsWithExtensions = useRefsWithExtensionsAt(
+    contentRef
+  ) as TextSpanRefWith<Extension>[];
+
+  const refsWithDiff = useRefsWithDiffAt(contentRef) as TextSpanRefWith<Diff>[];
 
   // compute decorations
   const decorations = useMemo<DecorationSet>(() => {
@@ -206,8 +212,11 @@ export const MarkdownEditor = ({ docUrl }: ToolProps) => {
     );
     const selectedObjects: Ref[] = [
       selectedText,
-      ...overlappingLinks.map((docLink) => docLink.docRef),
+      ...overlappingLinks.map((docLink) => docLink.get(Link).ref),
     ];
+
+    console.log(selectedObjects);
+
     setSelection(selectedObjects);
 
     // Track current selection range for comment button rendering

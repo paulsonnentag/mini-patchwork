@@ -7,6 +7,12 @@ export class Context {
   #refsById: Map<string, Ref> = new Map();
   #subcontexts = new Set<Context>();
 
+  constructor() {
+    setInterval(() => {
+      this.#notify();
+    }, 100);
+  }
+
   // ==== mutation methods ====
 
   add(ref: Ref | Ref[]) {

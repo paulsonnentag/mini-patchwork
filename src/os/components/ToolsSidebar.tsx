@@ -10,7 +10,7 @@ export const ToolsSidebar = ({ docUrl }: ToolProps) => {
   );
 
   const MIN_WIDTH = 240;
-  const MAX_WIDTH = 800;
+  const MAX_WIDTH = Infinity;
 
   const [width, setWidth] = useState<number>(() => {
     const stored = localStorage.getItem("patchwork:toolsSidebarWidth");
@@ -76,7 +76,9 @@ export const ToolsSidebar = ({ docUrl }: ToolProps) => {
         />
         <div className="flex-1" />
       </div>
-      {selectedTool && <selectedTool.component docUrl={docUrl} />}
+      <div className="flex-1 overflow-auto">
+        {selectedTool && <selectedTool.component docUrl={docUrl} />}
+      </div>
     </div>
   );
 };

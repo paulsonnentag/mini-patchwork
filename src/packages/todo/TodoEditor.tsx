@@ -37,7 +37,7 @@ export const TodoEditor = ({ docUrl }: ToolProps) => {
     setText("");
   };
 
-  // todo: this sucks, doc handle might be out of sync with the doc state
+  // hack: ignore
   if (
     !docHandle ||
     !docHandle.doc() ||

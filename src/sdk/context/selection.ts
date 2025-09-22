@@ -1,6 +1,10 @@
 import { useCallback } from "react";
 import { defineField } from "./core/fields";
-import { useSharedContextComputation, useSubContext } from "./core/hooks";
+import {
+  useSharedContext,
+  useSharedContextComputation,
+  useSubContext,
+} from "./core/hooks";
 import { Ref } from "./core/refs";
 
 const IsSelectedSymbol = Symbol("IsSelected");
@@ -13,7 +17,7 @@ const IsSelected = defineField<IsSelected, boolean>(
 export const useSelection = () => {
   const selectionContext = useSubContext();
 
-  const selectedObjRefs = useSharedContextComputation((context) =>
+  const selectedRefs = useSharedContextComputation((context) =>
     context.refsWith(IsSelected)
   );
 
@@ -25,12 +29,10 @@ export const useSelection = () => {
   );
 
   const isSelected = useCallback(
-    (objRef: Ref) =>
-      selectedObjRefs.some((selectedObjRef) =>
-        selectedObjRef.doesOverlap(objRef)
-      ),
-    [selectedObjRefs]
+    (ref: Ref) =>
+      selectedRefs.some((selectedRef) => selectedRef.doesOverlap(ref)),
+    [selectedRefs]
   );
 
-  return { isSelected, setSelection, selectedObjRefs };
+  return { isSelected, setSelection, selectedObjRefs: selectedRefs };
 };

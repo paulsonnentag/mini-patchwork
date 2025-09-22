@@ -7,7 +7,7 @@ import {
 } from "@automerge/automerge-repo-react-hooks";
 import { startTransition, useEffect, useMemo, useState } from "react";
 import { useSubContext } from "../../sdk/context/core/hooks";
-import { RefWith } from "../../sdk/context/core/refs";
+import { PathRef, RefWith } from "../../sdk/context/core/refs";
 import { Diff, getDiffOfDoc } from "../../sdk/context/diff";
 import { ToolProps } from "../../sdk/types";
 
@@ -40,6 +40,18 @@ export const BranchedEditor = ({ docUrl, tool: Tool }: BranchedProps) => {
 
   const checkedOutDocHandle = useDocHandle(checkedOutDocUrl);
   const checkedOutDoc = useDocument(checkedOutDocUrl);
+
+  const currentDocContext = useSubContext();
+
+  useEffect(() => {
+    if (!docHandle || !doc) {
+      return;
+    }
+
+    const docRef = new PathRef(docHandle, []);
+
+    currentDocContext.replace(docRef);
+  }, [doc, currentDocContext, docHandle]);
 
   const diffsOfDoc = useMemo<RefWith<Diff>[]>(() => {
     // make eslint happy, we need checkedOutDoc as a dependency because we need

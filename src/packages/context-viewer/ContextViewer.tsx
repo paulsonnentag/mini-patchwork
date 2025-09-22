@@ -1,105 +1,90 @@
-import { useMemo, useState } from "react";
-import { ToolProps } from "../../sdk/types";
-import { TextSpanRef, type Ref } from "../../sdk/context/core/refs";
 import { useSharedContextComputation } from "../../sdk/context/core/hooks";
+import { Ref, TextSpanRef } from "../../sdk/context/core/refs";
+import { ToolProps } from "../../sdk/types";
 
 export const ContextViewer = (props: ToolProps) => {
-  const { rows, refMap } = useSharedContextComputation((context) => {
-    const refs = context.refs;
-    const map = new Map<string, Ref>();
-    for (const ref of refs) {
-      let key = (ref.path as any[]).join(".");
-      if (ref instanceof TextSpanRef) key += `[${ref.from}:${ref.to}]`;
-      map.set(key, ref);
-    }
-    return { rows: dumpRows, refMap: map };
+  const refs = useSharedContextComputation((context) => context.refs);
+
+  // Sort refs by refToString
+  const sortedRefs = refs.slice().sort((a, b) => {
+    const aString = refToString(a);
+    const bString = refToString(b);
+    return aString.localeCompare(bString);
   });
 
-  const formatted = useMemo(() => {
-    return rows.map(([path, field, value]) => {
-      let fieldValuePretty: string;
-      try {
-        fieldValuePretty =
-          typeof value === "string" ? value : JSON.stringify(value, null, 2);
-      } catch {
-        fieldValuePretty = String(value);
-      }
+  return (
+    <table className="min-w-full divide-y divide-gray-200">
+      <thead className="bg-gray-50">
+        <tr>
+          <th className="px-6 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+            Ref
+          </th>
+          <th className="px-6 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+            Value
+          </th>
+        </tr>
+      </thead>
+      <tbody className="bg-white">
+        {sortedRefs.map((ref) => (
+          <>
+            <tr key={ref.toId()}>
+              <td className="px-6 py-2 whitespace-nowrap text-sm text-gray-900">
+                <span className="bg-blue-100 border border-blue-300 rounded-md p-1 font-mono">
+                  {refToString(ref)}
+                </span>
+              </td>
+              <td className="px-6 py-2 whitespace-nowrap text-sm text-blue-900 font-mono">
+                {valueToString(ref.value)}
+              </td>
+            </tr>
+            {ref.fields.map(([field, value]) => (
+              <tr key={field.toString()}>
+                <td className="px-6 py-2 whitespace-nowrap text-sm text-gray-900">
+                  {symbolToString(field)}
+                </td>
+                <td className="px-6 py-2 whitespace-nowrap text-sm text-blue-900 font-mono">
+                  {valueToString(value)}
+                </td>
+              </tr>
+            ))}
+            <tr>
+              <td
+                colSpan={2}
+                className="px-6 py-4 whitespace-nowrap text-sm text-gray-900"
+              >
+                <hr className="border-gray-200" />
+              </td>
+            </tr>
+          </>
+        ))}
+      </tbody>
+    </table>
+  );
+};
 
-      const pathKey = String(path ?? "");
-      const ref = refMap.get(pathKey);
+const refToString = (ref: Ref) => {
+  const shortId = ref.docUrl;
 
-      return {
-        path: pathKey,
-        field: String(field ?? ""),
-        fieldValuePretty,
-        fieldValueRaw: value as any,
-        ref,
-      } as {
-        path: string;
-        field: string;
-        fieldValuePretty: string;
-        fieldValueRaw: any;
-        ref: Ref | undefined;
-      };
-    });
-  }, [rows, refMap]);
-
-  if (!formatted.length) {
-    return (
-      <div className="w-full h-full p-2 text-sm text-gray-500">
-        Context is empty.
-      </div>
-    );
+  if (ref instanceof TextSpanRef) {
+    return `${shortId}/${ref.path.join("/")}[${
+      ref.from === ref.to ? ref.from : `${ref.from}:${ref.to}]`
+    }]`;
   }
 
-  return (
-    <div className="w-full h-full p-2">
-      <div className="border border-gray-300 rounded-md bg-white overflow-hidden h-full flex flex-col">
-        <div className="overflow-auto">
-          <table className="table-auto w-full border-collapse">
-            <thead>
-              <tr className="bg-gray-50">
-                <th className="text-left p-2 border-b border-gray-200 w-[30%]">
-                  path
-                </th>
-                <th className="text-left p-2 border-b border-gray-200 w-[15%]">
-                  field
-                </th>
-                <th className="text-left p-2 border-b border-gray-200 w-[25%]">
-                  object
-                </th>
-                <th className="text-left p-2 border-b border-gray-200">
-                  value
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {formatted.map((r, i) => (
-                <tr key={i} className="align-top hover:bg-gray-50">
-                  <td className="p-2 border-b border-gray-100">
-                    <span className="font-mono text-xs text-gray-700 break-words">
-                      {r.path}
-                    </span>
-                  </td>
-                  <td className="p-2 border-b border-gray-100">
-                    <span className="font-mono text-xs text-gray-700 break-words">
-                      {r.field}
-                    </span>
-                  </td>
-                  <td className="p-2 border-b border-gray-100">
-                    <JsonPreview
-                      value={r.ref ? (r.ref as any).value : undefined}
-                    />
-                  </td>
-                  <td className="p-2 border-b border-gray-100">
-                    <JsonPreview value={r.fieldValueRaw} />
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-  );
+  return `${shortId}${ref.path.length > 0 ? "/" : ""}${ref.path.join("/")}`;
+};
+
+const symbolToString = (symbol: symbol) => {
+  const symbolString = symbol.toString();
+  return symbolString.slice(7, -1); // Removes 'Symbol(' from start and ')' from end
+};
+
+const valueToString = (value: any) => {
+  return JSON.stringify(value, (key, value) => {
+    if (value instanceof Ref) {
+      return refToString(value);
+    }
+
+    return value;
+  });
 };

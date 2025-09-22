@@ -11,8 +11,8 @@ import { ContextViewerTool } from "../packages/context-viewer";
 export const MAIN_TOOLS: Tool[] = [MarkdownTool, TodoTool];
 
 export const SIDEBAR_TOOLS: Tool[] = [
-  MapTool,
-  /*PotluckTool,*/ ContextViewerTool,
+  ContextViewerTool,
+  MapTool /*PotluckTool*/,
 ];
 
 export const getCompatibleMainTools = (doc: any) => {

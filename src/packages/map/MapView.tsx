@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { useSelection } from "../../sdk/context/selection";
 import { MapLibreMap, Marker } from "./lib/maplibre";
 import { Ref } from "../../sdk/context/core/refs";
@@ -16,8 +16,8 @@ export type LocationDoc = {
 };
 
 export const MapView = () => {
-  const { isSelected, setSelection } = useSelection();
-  const objRefsWithLatLng = useSharedContextComputation((context) => {
+  const { isSelected, setSelection, selectedObjRefs } = useSelection();
+  const refsWithLatLng = useSharedContextComputation((context) => {
     return context.refs.filter((ref): ref is Ref<GeoPosition> => {
       const value = ref.value as any;
       return (
@@ -28,15 +28,15 @@ export const MapView = () => {
 
   const markers = useMemo<Marker[]>(
     () =>
-      objRefsWithLatLng.map((objRef) => ({
-        lat: objRef.value.lat,
-        lng: objRef.value.lng,
-        color: isSelected(objRef)
+      refsWithLatLng.map((ref) => ({
+        lat: ref.value.lat,
+        lng: ref.value.lng,
+        color: isSelected(ref)
           ? "oklch(0.637 0.5 25.331)" // More saturated and lighter
           : "oklch(0.704 0.1 22.216)", // Less saturated and darker
-        data: { objRef },
+        data: { ref },
       })),
-    [objRefsWithLatLng, isSelected]
+    [refsWithLatLng, isSelected]
   );
 
   return (
@@ -45,7 +45,7 @@ export const MapView = () => {
         markers={markers}
         onHoverMarker={(marker) => {
           if (marker) {
-            setSelection([marker.data.objRef]);
+            setSelection([marker.data.ref]);
           } else {
             setSelection([]);
           }

@@ -1,5 +1,5 @@
 import * as Automerge from "@automerge/automerge";
-import { DocHandle } from "@automerge/automerge-repo";
+import { AutomergeUrl, DocHandle } from "@automerge/automerge-repo";
 import { lookup } from "../../../lib/lookup";
 import { FieldType, FieldValue } from "./fields";
 
@@ -50,6 +50,10 @@ export abstract class Ref<
     return new PathRef(this.docHandle, []); // maybe we should have a doc ref as a separate class?
   }
 
+  get docUrl(): AutomergeUrl {
+    return this.docHandle.url;
+  }
+
   // ==== mutation methods ====
 
   change(fn: (obj: Value) => void) {
@@ -69,7 +73,7 @@ export abstract class Ref<
   }
 
   doesOverlap(other: Ref) {
-    return this === other;
+    return this.toId() === other.toId();
   }
 
   isPartOf(other: Ref) {
@@ -111,6 +115,10 @@ export abstract class Ref<
     return this[$fields].has(field.type) as Type extends Fields
       ? true
       : boolean;
+  }
+
+  get fields(): [symbol, any][] {
+    return Array.from(this[$fields].entries());
   }
 }
 

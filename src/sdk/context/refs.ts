@@ -7,6 +7,30 @@ export const $fields = Symbol("fields");
 
 export type RefWith<Fields extends symbol> = Ref<unknown, unknown, Fields>;
 
+type SerializedPathRef = {
+  type: "path";
+  path: Automerge.Prop[];
+};
+
+type SerializedIdRef = {
+  type: "id";
+  path: Automerge.Prop[];
+  key: Automerge.Prop;
+  id: string;
+};
+
+type SerializedTextSpanRef = {
+  type: "text-span";
+  path: Automerge.Prop[];
+  from: Automerge.Cursor;
+  to: Automerge.Cursor;
+};
+
+type SerializedRef =
+  | SerializedPathRef
+  | SerializedIdRef
+  | SerializedTextSpanRef;
+
 export abstract class Ref<
   Value = unknown,
   Doc = unknown,
@@ -29,6 +53,8 @@ export abstract class Ref<
   protected abstract resolve(doc: Doc): Value;
 
   abstract clone(): Ref<Value, Doc, Fields>;
+
+  abstract serialize(): SerializedRef;
 
   // ==== value methods ====
 
@@ -144,6 +170,10 @@ export class PathRef<
   clone(): Ref<Value, Doc, Fields> {
     return new PathRef(this.docHandle, this.path);
   }
+
+  serialize(): SerializedRef {
+    return { type: "path", path: this.path };
+  }
 }
 
 export class IdRef<Value, Doc, Fields extends symbol = never> extends Ref<
@@ -177,6 +207,15 @@ export class IdRef<Value, Doc, Fields extends symbol = never> extends Ref<
   clone(): Ref<Value, Doc, Fields> {
     return new IdRef(this.docHandle, this.path, this.#id, this.#key);
   }
+
+  serialize(): SerializedRef {
+    return {
+      type: "id",
+      path: this.path,
+      id: this.#id,
+      key: this.#key,
+    };
+  }
 }
 
 export class TextSpanRef<
@@ -190,14 +229,16 @@ export class TextSpanRef<
   constructor(
     docHandle: DocHandle<Doc>,
     path: Automerge.Prop[],
-    from: number,
-    to: number
+    from: number | Automerge.Cursor,
+    to: number | Automerge.Cursor
   ) {
     super(docHandle, path);
 
     const doc = docHandle.doc();
-    this.#fromCursor = Automerge.getCursor(doc, path, from);
-    this.#toCursor = Automerge.getCursor(doc, path, to);
+    this.#fromCursor =
+      typeof from === "number" ? Automerge.getCursor(doc, path, from) : from;
+    this.#toCursor =
+      typeof to === "number" ? Automerge.getCursor(doc, path, to) : to;
   }
 
   get from() {
@@ -265,6 +306,15 @@ export class TextSpanRef<
   clone(): Ref<Value, Doc, Fields> {
     return new TextSpanRef(this.docHandle, this.path, this.from, this.to);
   }
+
+  serialize(): SerializedRef {
+    return {
+      type: "text-span",
+      path: this.path,
+      from: this.#fromCursor,
+      to: this.#toCursor,
+    };
+  }
 }
 
 export type TextSpanRefWith<Fields extends symbol> = TextSpanRef<
@@ -272,3 +322,17 @@ export type TextSpanRefWith<Fields extends symbol> = TextSpanRef<
   unknown,
   Fields
 >;
+
+export const loadRef = (
+  docHandle: DocHandle<unknown>,
+  ref: SerializedRef
+): Ref => {
+  switch (ref.type) {
+    case "path":
+      return new PathRef(docHandle, ref.path);
+    case "id":
+      return new IdRef(docHandle, ref.path, ref.id, ref.key);
+    case "text-span":
+      return new TextSpanRef(docHandle, ref.path, ref.from, ref.to);
+  }
+};

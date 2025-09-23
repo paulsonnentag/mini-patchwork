@@ -1,21 +1,40 @@
-import { Repo } from "@automerge/automerge-repo";
-import { BrowserWebSocketClientAdapter } from "@automerge/automerge-repo-network-websocket";
-import { RepoContext } from "@automerge/automerge-repo-react-hooks";
-import { IndexedDBStorageAdapter } from "@automerge/automerge-repo-storage-indexeddb";
-import ReactDOM from "react-dom/client";
 import "./index.css";
+import { RepoContext } from "@automerge/automerge-repo-react-hooks";
+
+import ReactDOM from "react-dom/client";
+
 import { Frame } from "./os/components/Frame";
 import { CONTEXT } from "./sdk/context";
-
-const repo = new Repo({
-  network: [new BrowserWebSocketClientAdapter("wss://sync3.automerge.org")],
-  storage: new IndexedDBStorageAdapter(),
-});
+import { AutomergeUrl, Repo, DocHandle } from "@automerge/automerge-repo";
 
 (window as any).$context = CONTEXT;
 
-ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
-  <RepoContext.Provider value={repo}>
-    <Frame />
-  </RepoContext.Provider>
-);
+export const plugins = [
+  {
+    type: "patchwork:tool",
+    id: "mini-patchwork",
+    name: "Mini Patchwork",
+    supportedDataTypes: ["account"],
+    async load() {
+      return {
+        render({
+          element,
+          handle,
+          repo,
+        }: {
+          element: HTMLElement;
+          handle: DocHandle<{ documents: AutomergeUrl[] }>;
+          repo: Repo;
+        }) {
+          const root = ReactDOM.createRoot(element);
+          root.render(
+            <RepoContext.Provider value={repo}>
+              <Frame accountUrl={handle.url} />
+            </RepoContext.Provider>
+          );
+          return () => root.unmount();
+        },
+      };
+    },
+  },
+];

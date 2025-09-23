@@ -1,16 +1,12 @@
-import {
-  AutomergeUrl,
-  ChangeFn,
-  isValidAutomergeUrl,
-} from "@automerge/automerge-repo";
+import { AutomergeUrl } from "@automerge/automerge-repo";
 import { DATA_TYPE_TEMPLATES, getDataType } from "../datatypes";
 import { useDocument, useRepo } from "@automerge/automerge-repo-react-hooks";
 import { DataTypeTemplate, PatchworkDoc } from "../../sdk/types";
-import { useEffect, useState } from "react";
 
 type DocListSidebarProps = {
   selectedDocUrl: AutomergeUrl | undefined;
   setSelectedDocUrl: (url: AutomergeUrl) => void;
+  accountUrl: AutomergeUrl;
 };
 
 type AccountDoc = {
@@ -20,8 +16,9 @@ type AccountDoc = {
 export const DocListSidebar = ({
   selectedDocUrl,
   setSelectedDocUrl,
+  accountUrl,
 }: DocListSidebarProps) => {
-  const [accountDoc, changeAccountDoc] = useAccountDoc();
+  const [accountDoc, changeAccountDoc] = useDocument<AccountDoc>(accountUrl);
   const repo = useRepo();
 
   const addNewDocument = (template: DataTypeTemplate) => {
@@ -92,31 +89,4 @@ export const DocumentLink = ({
       {dataType?.getTitle(doc) || "Unknown Document"}
     </button>
   );
-};
-
-const useAccountDoc = (): [
-  accountDoc: AccountDoc | undefined,
-  changeAccountDoc: (fn: ChangeFn<AccountDoc>) => void
-] => {
-  const repo = useRepo();
-  const [accountDocUrl, setAccountDocUrl] = useState<AutomergeUrl | undefined>(
-    undefined
-  );
-  const [accountDoc, changeAccountDoc] = useDocument<AccountDoc>(accountDocUrl);
-
-  useEffect(() => {
-    const accountDocUrl = localStorage.getItem("patchwork:accountDocUrl");
-    if (accountDocUrl && isValidAutomergeUrl(accountDocUrl)) {
-      setAccountDocUrl(accountDocUrl);
-    } else {
-      const accountDocHandle = repo.create<AccountDoc>();
-      accountDocHandle.change((doc) => {
-        doc.documents = [];
-      });
-      setAccountDocUrl(accountDocHandle.url);
-      localStorage.setItem("patchwork:accountDocUrl", accountDocHandle.url);
-    }
-  }, []);
-
-  return [accountDoc, changeAccountDoc];
 };

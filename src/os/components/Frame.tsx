@@ -6,8 +6,9 @@ import { BranchedEditor } from "./BranchedEditor";
 import { DocListSidebar } from "./DocListSidebar";
 import { ToolPicker } from "./ToolPicker";
 import { ToolsSidebar } from "./ToolsSidebar";
+import { AutomergeUrl } from "@automerge/automerge-repo";
 
-export const Frame = () => {
+export const Frame = (props: { accountUrl: AutomergeUrl }) => {
   const [selectedDocUrl, setSelectedDocUrl] = useDocUrl();
   const [isSidebarExpanded, setIsSidebarExpanded] = useState(false);
   const {
@@ -19,6 +20,7 @@ export const Frame = () => {
   return (
     <div className="h-screen w-screen flex">
       <DocListSidebar
+        accountUrl={props.accountUrl}
         selectedDocUrl={selectedDocUrl}
         setSelectedDocUrl={setSelectedDocUrl}
       />

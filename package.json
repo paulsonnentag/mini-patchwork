@@ -11,7 +11,14 @@
     "test:ui": "vitest --ui",
     "lint": "eslint . --ext .js,.jsx,.ts,.tsx"
   },
+  "main": "./dist/main.js",
+  "exports": {
+    ".": {
+      "import": "./dist/main.js"
+    }
+  },
   "dependencies": {
+    "@automerge/automerge": "^3.1.2",
     "@automerge/automerge-codemirror": "^0.2.0",
     "@automerge/automerge-repo": "^2.2.0",
     "@automerge/automerge-repo-network-websocket": "^2.2.0",
@@ -25,13 +32,16 @@
     "@codemirror/search": "^6.5.11",
     "@codemirror/state": "^6.5.2",
     "@codemirror/view": "^6.38.1",
+    "@lezer/highlight": "^1.2.1",
     "codemirror": "^6.0.2",
     "eventemitter3": "^5.0.1",
     "lucide-react": "^0.542.0",
     "maplibre-gl": "^5.6.2",
     "react": "^18.3.0",
     "react-dom": "^18.3.0",
-    "react-json-view": "^1.21.3"
+    "react-json-view": "^1.21.3",
+    "tailwindcss": "^4.1.13",
+    "vite-plugin-css-injected-by-js": "^3.5.2"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.1.12",

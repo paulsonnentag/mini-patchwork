@@ -21,6 +21,10 @@ export default defineConfig({
         "@automerge/automerge",
         "@automerge/automerge-repo",
         "@patchwork/rootstock",
+        "@patchwork/context",
+        "@patchwork/context/diff",
+        "@patchwork/context/react",
+        "@patchwork/context/comments",
       ],
       preserveEntrySignatures: "allow-extension",
       output: {

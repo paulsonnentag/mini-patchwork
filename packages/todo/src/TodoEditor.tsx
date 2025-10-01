@@ -9,6 +9,7 @@ import { PathRef, Ref } from "@patchwork/context";
 import { getDiff } from "@patchwork/context/diff";
 import { useReactive } from "@patchwork/context/react";
 import { type AutomergeUrl } from "@automerge/automerge-repo";
+import { getComments, Comment } from "@patchwork/context/comments";
 
 type Todo = {
   id: string;
@@ -87,7 +88,8 @@ type TodoItemProps = {
 const TodoItem = ({ todoRef }: TodoItemProps) => {
   const todo = todoRef.value;
 
-  const diff = useReactive(getDiff(todoRef as any));
+  const diff = useReactive(getDiff(todoRef));
+  const comments = useReactive(getComments(todoRef));
 
   const onToogle = () => {
     todoRef.change((todo) => {
@@ -117,6 +119,68 @@ const TodoItem = ({ todoRef }: TodoItemProps) => {
         value={todo.description}
         onChange={onChangeDescription}
       />
+      {comments.length === 0 && (
+        <button className="bg-gray-100 rounded-md p-2">Add comment</button>
+      )}
+      {comments.map((comment) => (
+        <CommentView key={comment.toId()} commentRef={comment} />
+      ))}
+    </div>
+  );
+};
+
+type CommentsEditorProps = {
+  commentRef: Ref<Comment>;
+};
+
+export const CommentView = ({ commentRef }: CommentsEditorProps) => {
+  const onChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    commentRef.change((comment) => {
+      comment.content = e.target.value;
+    });
+  };
+
+  const onSubmit = () => {
+    commentRef.change((comment) => {
+      comment.draftContent = comment.content;
+      delete comment.draftContent;
+    });
+  };
+
+  const onEdit = () => {
+    commentRef.change((comment) => {
+      comment.draftContent = comment.content;
+    });
+  };
+
+  const comment = commentRef.value;
+  const content = comment.content ?? comment.draftContent ?? "";
+  const isDraft = comment.content === undefined;
+  const isEditing = comment.draftContent !== undefined;
+
+  return (
+    <div>
+      {isEditing ? (
+        <textarea onChange={onChange} value={content} />
+      ) : (
+        <div>{content}</div>
+      )}
+      <button
+        className="bg-gray-100 rounded-md p-2"
+        onClick={onSubmit}
+        disabled={isDraft}
+      >
+        {isDraft ? "Add" : "Update"}
+      </button>
+      {!isEditing && (
+        <button
+          className="bg-gray-100 rounded-md p-2"
+          onClick={onEdit}
+          disabled={isDraft}
+        >
+          Edit
+        </button>
+      )}
     </div>
   );
 };

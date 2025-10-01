@@ -1,5 +1,5 @@
 import * as Automerge from "@automerge/automerge";
-import { AutomergeUrl } from "@automerge/automerge-repo";
+import { AutomergeUrl, DocHandle } from "@automerge/automerge-repo";
 import {
   useDocHandle,
   useDocument,
@@ -9,6 +9,11 @@ import { startTransition, useEffect, useMemo, useState } from "react";
 import { PathRef, RefWith } from "@patchwork/context";
 import { Diff, getDiffOfDoc } from "@patchwork/context/diff";
 import { useSubcontext } from "@patchwork/context/react";
+import {
+  Comments,
+  DocWithComments,
+  getCommentsOfDoc,
+} from "@patchwork/context/comments";
 
 type Branch = {
   name: string;
@@ -32,8 +37,8 @@ export const BranchedEditor = ({ docUrl }: { docUrl: AutomergeUrl }) => {
   const [doc, changeDoc] = useDocument<DocWithBranchesMetadata>(docUrl);
   const [highlightChanges, setHighlightChanges] = useState(true);
 
-  const checkedOutDocHandle = useDocHandle(checkedOutDocUrl);
-  const checkedOutDoc = useDocument(checkedOutDocUrl);
+  const checkedOutDocHandle = useDocHandle<DocWithComments>(checkedOutDocUrl);
+  const checkedOutDoc = useDocument<DocWithComments>(checkedOutDocUrl);
 
   const currentDocContext = useSubcontext();
 
@@ -67,6 +72,22 @@ export const BranchedEditor = ({ docUrl }: { docUrl: AutomergeUrl }) => {
   useEffect(() => {
     diffContext.replace(diffsOfDoc);
   }, [diffContext, diffsOfDoc]);
+
+  const commentsContext = useSubcontext();
+
+  const commentsOfDoc = useMemo<RefWith<Comments>[]>(() => {
+    void checkedOutDoc;
+
+    if (!checkedOutDocHandle) {
+      return [];
+    }
+
+    return getCommentsOfDoc(checkedOutDocHandle as DocHandle<DocWithComments>);
+  }, [checkedOutDoc, checkedOutDocHandle]);
+
+  useEffect(() => {
+    commentsContext.replace(commentsOfDoc);
+  }, [commentsContext, commentsOfDoc]);
 
   // create branches doc if it doesn't exist
   const shouldAddBranchesDocUrl = doc && doc.branchesDocUrl === undefined;
@@ -169,5 +190,12 @@ export const BranchedEditor = ({ docUrl }: { docUrl: AutomergeUrl }) => {
 };
 
 const Embed = ({ docUrl }: { docUrl: AutomergeUrl }) => {
-  return <rootstock-tool doc-url={docUrl} tool-id="todo" />;
+  const [doc] = useDocument<any>(docUrl, { suspense: true });
+
+  const type = doc["@patchwork"] ? doc["@patchwork"]?.type : undefined;
+
+  return (
+    //@ts-expect-error jsx doesn't have type information for our custom element
+    <rootstock-tool doc-url={docUrl} tool-id={type} />
+  );
 };

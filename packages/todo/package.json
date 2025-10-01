@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "build": "vite build",
-    "push": "pnpm build && pushwork sync",
+    "sync": "pnpm build && pushwork sync",
     "lint": "eslint . --ext .js,.jsx,.ts,.tsx"
   },
   "main": "./dist/main.js",
@@ -22,7 +22,7 @@
     "react-dom": "^18.3.0",
     "tailwindcss": "^4.1.13",
     "vite-plugin-css-injected-by-js": "^3.5.2",
-    "@patchwork/context": "git@github.com:inkandswitch/context.git#a909efae82ac1e5e37ce2c562b36ee06ad16ff0d"
+    "@patchwork/context": "link:../../../context"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.1.12",
